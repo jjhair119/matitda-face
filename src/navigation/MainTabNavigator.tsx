@@ -1,6 +1,7 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { Animated, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { CommunityScreen } from '../screens/community/CommunityScreen';
@@ -16,7 +17,7 @@ export type MainTabParamList = {
   MyPage: undefined;
 };
 
-const Tab = createBottomTabNavigator<MainTabParamList>();
+const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 
 const tabItems = [
   { name: 'Friends' as const, label: '친구', icon: '👥' },
@@ -26,30 +27,54 @@ const tabItems = [
   { name: 'MyPage' as const, label: '마이', icon: '👤' },
 ];
 
+function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (focused) {
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.3, duration: 120, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 120, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [focused]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Text style={{ fontSize: 17, opacity: focused ? 1 : 0.38 }}>{icon}</Text>
+    </Animated.View>
+  );
+}
+
 export function MainTabNavigator() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
+      initialRouteName="Home"
+      tabBarPosition="bottom"
       screenOptions={({ route }) => {
         const item = tabItems.find((t) => t.name === route.name);
         return {
-          headerShown: false,
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
             borderTopWidth: 1,
-            paddingBottom: 20,
-            paddingTop: 8,
-            height: 68,
+            paddingBottom: insets.bottom || 8,
+            height: 56 + (insets.bottom || 8),
           },
+          tabBarIndicatorStyle: { height: 0 },
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.sub,
+          tabBarLabelStyle: { fontSize: 9, marginTop: 2 },
           tabBarLabel: item?.label ?? route.name,
-          tabBarLabelStyle: { fontSize: 9 },
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 17, opacity: focused ? 1 : 0.38 }}>
-              {item?.icon}
-            </Text>
+            <TabIcon icon={item?.icon ?? ''} focused={focused} />
           ),
+          tabBarShowIcon: true,
+          tabBarIconStyle: { width: 24, height: 24 },
+          swipeEnabled: true,
+          animationEnabled: true,
         };
       }}
     >
