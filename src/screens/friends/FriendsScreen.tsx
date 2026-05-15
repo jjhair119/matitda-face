@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from 'react';
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator} from 'react-native';
+import React, {useState, useEffect, useRef} from 'react';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Animated} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {colors} from '../../theme';
 import {Friend, fetchFollowing, fetchFollowers, fetchSuggestedFriends} from '../../api/friends';
@@ -11,6 +11,75 @@ function Avatar({emoji}: {emoji: string}) {
     return (
         <View style={s.avatar}>
             <Text style={{fontSize: 16}}>{emoji}</Text>
+        </View>
+    );
+}
+
+const SPARKLE_COUNT = 6;
+const SPARKLE_COLORS = [colors.accent, colors.accent2, colors.accent3, colors.amber, colors.teal];
+const SPARKLE_SIZES = [5, 4, 6, 4, 5, 4];
+
+function CheerButton() {
+    const [cheered, setCheered] = useState(false);
+    const scale = useRef(new Animated.Value(1)).current;
+    const sparkles = useRef(
+        Array.from({length: SPARKLE_COUNT}, () => ({
+            x: new Animated.Value(0),
+            y: new Animated.Value(0),
+            opacity: new Animated.Value(0),
+        }))
+    ).current;
+
+    const handlePress = () => {
+        if (cheered) return;
+        setCheered(true);
+
+        Animated.sequence([
+            Animated.timing(scale, {toValue: 1.4, duration: 100, useNativeDriver: true}),
+            Animated.timing(scale, {toValue: 1, duration: 100, useNativeDriver: true}),
+        ]).start();
+
+        sparkles.forEach((sp, i) => {
+            const angle = (i / SPARKLE_COUNT) * Math.PI * 2;
+            const dist = 22;
+            sp.x.setValue(0);
+            sp.y.setValue(0);
+            sp.opacity.setValue(1);
+            Animated.parallel([
+                Animated.timing(sp.x, {toValue: Math.cos(angle) * dist, duration: 400, useNativeDriver: true}),
+                Animated.timing(sp.y, {toValue: Math.sin(angle) * dist, duration: 400, useNativeDriver: true}),
+                Animated.timing(sp.opacity, {toValue: 0, duration: 400, useNativeDriver: true}),
+            ]).start();
+        });
+    };
+
+    return (
+        <View style={{width: 52, height: 28, alignItems: 'center', justifyContent: 'center'}}>
+            {sparkles.map((sp, i) => (
+                <Animated.View
+                    key={i}
+                    pointerEvents="none"
+                    style={{
+                        position: 'absolute',
+                        width: SPARKLE_SIZES[i],
+                        height: SPARKLE_SIZES[i],
+                        borderRadius: 99,
+                        backgroundColor: SPARKLE_COLORS[i % SPARKLE_COLORS.length],
+                        opacity: sp.opacity,
+                        transform: [{translateX: sp.x}, {translateY: sp.y}],
+                    }}
+                />
+            ))}
+            <TouchableOpacity
+                onPress={handlePress}
+                disabled={cheered}
+                activeOpacity={0.7}
+                style={[s.cheerBtn, cheered && s.cheerBtnDone]}
+            >
+                <Animated.View style={{transform: [{scale}]}}>
+                    <Text style={{fontSize: 11}}>👏</Text>
+                </Animated.View>
+            </TouchableOpacity>
         </View>
     );
 }
@@ -52,9 +121,7 @@ function FriendCard({friend, showFollow}: {friend: Friend; showFollow?: boolean}
                     </Text>
                 </TouchableOpacity>
             ) : (
-                <TouchableOpacity style={s.cheerBtn}>
-                    <Text style={{fontSize: 11}}>👏</Text>
-                </TouchableOpacity>
+                <CheerButton/>
             )}
         </View>
     );
@@ -159,7 +226,8 @@ const s = StyleSheet.create({
     scoreBox: {alignItems: 'center', width: 36},
     scoreNum: {fontSize: 15, fontWeight: '700', color: colors.accent},
     scoreLabel: {fontSize: 9, color: colors.sub},
-    cheerBtn: {width: 52, height: 28, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center'},
+    cheerBtn: {width: 52, height: 28, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', flexDirection: 'row'},
+    cheerBtnDone: {backgroundColor: 'rgba(184,255,78,0.08)', borderColor: 'rgba(184,255,78,0.25)'},
     followBtn: {width: 52, height: 28, borderRadius: 8, backgroundColor: 'rgba(184,255,78,0.1)', borderWidth: 1, borderColor: 'rgba(184,255,78,0.3)', alignItems: 'center', justifyContent: 'center'},
     followBtnText: {fontSize: 11, color: colors.accent},
     followingBtn: {backgroundColor: 'rgba(255,255,255,0.04)', borderColor: colors.border},
