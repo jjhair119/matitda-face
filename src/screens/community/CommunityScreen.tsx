@@ -1,19 +1,3 @@
-// import React from 'react';
-// import {View, Text, StyleSheet} from 'react-native';
-// import {SafeAreaView} from 'react-native-safe-area-context';
-// import {colors} from '../../theme';
-
-// export function CommunityScreen() {
-//     return (
-//         <SafeAreaView style={s.container}>
-//             <View style={s.center}>
-//                 <Text style={s.icon}>💬</Text>
-//                 <Text style={s.text}>커뮤니티</Text>
-//                 <Text style={s.sub}>준비 중입니다</Text>
-//             </View>
-//         </SafeAreaView>
-//     );
-// }
 import React, { useState } from 'react';
 import {
   View,
