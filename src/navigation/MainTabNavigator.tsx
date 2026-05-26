@@ -3,7 +3,7 @@ import {createMaterialTopTabNavigator} from '@react-navigation/material-top-tabs
 import {Animated, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {colors} from '../theme';
-import {HomeScreen} from '../screens/home/HomeScreen';
+import {HomeStackNavigator} from './HomeStackNavigator';
 import {CommunityScreen} from '../screens/community/CommunityScreen';
 import {FriendsScreen} from '../screens/friends/FriendsScreen';
 import {MarketScreen} from '../screens/market/MarketScreen';
@@ -80,7 +80,7 @@ export function MainTabNavigator() {
         >
             <Tab.Screen name="Friends" component={FriendsScreen}/>
             <Tab.Screen name="Community" component={CommunityScreen}/>
-            <Tab.Screen name="Home" component={HomeScreen}/>
+            <Tab.Screen name="Home" component={HomeStackNavigator}/>
             <Tab.Screen name="Market" component={MarketScreen}/>
             <Tab.Screen name="MyPage" component={MyPageScreen}/>
         </Tab.Navigator>

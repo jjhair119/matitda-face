@@ -1,6 +1,6 @@
 import {create} from 'zustand';
 
-interface UserProfile {
+export interface UserProfile {
     id: string;
     nickname: string;
     age: number;
@@ -20,9 +20,11 @@ interface AuthState {
     isLoggedIn: boolean;
     isOnboarded: boolean;
     user: UserProfile | null;
+    draftProfile: Partial<UserProfile>;
     setUser: (user: UserProfile) => void;
     setLoggedIn: (v: boolean) => void;
     setOnboarded: (v: boolean) => void;
+    setDraftProfile: (partial: Partial<UserProfile>) => void;
     logout: () => void;
 }
 
@@ -30,8 +32,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     isLoggedIn: false,
     isOnboarded: false,
     user: null,
+    draftProfile: {},
     setUser: (user) => set({user}),
     setLoggedIn: (isLoggedIn) => set({isLoggedIn}),
     setOnboarded: (isOnboarded) => set({isOnboarded}),
-    logout: () => set({isLoggedIn: false, isOnboarded: false, user: null}),
+    setDraftProfile: (partial) =>
+        set((state) => ({draftProfile: {...state.draftProfile, ...partial}})),
+    logout: () => set({isLoggedIn: false, isOnboarded: false, user: null, draftProfile: {}}),
 }));
