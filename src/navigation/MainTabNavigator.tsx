@@ -6,7 +6,7 @@ import {colors} from '../theme';
 import {HomeStackNavigator} from './HomeStackNavigator';
 import {CommunityScreen} from '../screens/community/CommunityScreen';
 import {FriendsScreen} from '../screens/friends/FriendsScreen';
-import {MarketScreen} from '../screens/market/MarketScreen';
+import {MarketStackNavigator} from './MarketStackNavigator';
 import {MyPageStackNavigator} from './MyPageStackNavigator';
 
 export type MainTabParamList = {
@@ -81,7 +81,7 @@ export function MainTabNavigator() {
             <Tab.Screen name="Friends" component={FriendsScreen}/>
             <Tab.Screen name="Community" component={CommunityScreen}/>
             <Tab.Screen name="Home" component={HomeStackNavigator}/>
-            <Tab.Screen name="Market" component={MarketScreen}/>
+            <Tab.Screen name="Market" component={MarketStackNavigator}/>
             <Tab.Screen name="MyPage" component={MyPageStackNavigator}/>
         </Tab.Navigator>
     );
