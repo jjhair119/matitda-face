@@ -1,10 +1,11 @@
 import React from 'react';
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useAuthStore} from '../../store/authStore';
 import {useMealStore} from '../../store/mealStore';
 import {usePointStore} from '../../store/pointStore';
+import {useOrderStore} from '../../store/orderStore';
 import {MyPageStackParamList} from '../../navigation/MyPageStackNavigator';
 import {colors} from '../../theme';
 
@@ -21,9 +22,18 @@ const DUMMY_WEEK_SCORES: (number | null)[] = [88, 92, null, 76, null, null, null
 
 export function MyPageScreen({navigation}: Props) {
     const user = useAuthStore((s) => s.user);
+    const logout = useAuthStore((s) => s.logout);
     const meals = useMealStore((s) => s.meals);
     const points = usePointStore((s) => s.points);
     const coupons = usePointStore((s) => s.coupons);
+    const orderCount = useOrderStore((s) => s.orders.length);
+
+    const handleLogout = () => {
+        Alert.alert('로그아웃', '정말 로그아웃할까요?', [
+            {text: '취소', style: 'cancel'},
+            {text: '로그아웃', style: 'destructive', onPress: logout},
+        ]);
+    };
 
     const todayScores = meals.filter((m) => m.score !== null).map((m) => m.score!);
     const todayAvg = todayScores.length > 0
@@ -207,6 +217,33 @@ export function MyPageScreen({navigation}: Props) {
                         </View>
                     </>
                 )}
+                {/* 주문 내역 & 설정 */}
+                <Text style={s.sectionLabel}>더보기</Text>
+                <View style={s.card}>
+                    <TouchableOpacity
+                        style={s.menuRow}
+                        onPress={() => navigation.navigate('OrderHistory')}
+                    >
+                        <Text style={s.menuIcon}>🛒</Text>
+                        <Text style={s.menuLabel}>주문 내역</Text>
+                        <Text style={s.menuCount}>{orderCount}건</Text>
+                        <Text style={s.menuArrow}>→</Text>
+                    </TouchableOpacity>
+                    <View style={s.divider}/>
+                    <TouchableOpacity
+                        style={s.menuRow}
+                        onPress={() => navigation.navigate('PointCoupon')}
+                    >
+                        <Text style={s.menuIcon}>🎁</Text>
+                        <Text style={s.menuLabel}>포인트 & 쿠폰</Text>
+                        <Text style={s.menuCount}>{points.toLocaleString()}P</Text>
+                        <Text style={s.menuArrow}>→</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
+                    <Text style={s.logoutText}>로그아웃</Text>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );
@@ -337,4 +374,27 @@ const s = StyleSheet.create({
     scoreCellText: {fontSize: 8, fontWeight: '600', color: '#0f1117'},
     weekAvg: {fontSize: 11, color: colors.sub, marginTop: 2},
     weekAvgAccent: {color: colors.accent, fontWeight: '600'},
+
+    menuRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 4,
+    },
+    menuIcon: {fontSize: 15},
+    menuLabel: {flex: 1, fontSize: 13, color: colors.text},
+    menuCount: {fontSize: 12, color: colors.sub},
+    menuArrow: {fontSize: 13, color: colors.sub},
+
+    logoutBtn: {
+        marginTop: 4,
+        marginBottom: 32,
+        paddingVertical: 13,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,107,74,0.25)',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,107,74,0.05)',
+    },
+    logoutText: {fontSize: 14, fontWeight: '500', color: colors.accent2},
 });

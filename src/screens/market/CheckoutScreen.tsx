@@ -6,6 +6,7 @@ import {MarketStackParamList} from '../../navigation/MarketStackNavigator';
 import {STORES} from '../../data/marketData';
 import {useCartStore} from '../../store/cartStore';
 import {usePointStore} from '../../store/pointStore';
+import {useOrderStore} from '../../store/orderStore';
 import {colors} from '../../theme';
 
 type Props = NativeStackScreenProps<MarketStackParamList, 'Checkout'>;
@@ -27,6 +28,7 @@ export function CheckoutScreen({navigation}: Props) {
     const coupons = usePointStore((s) => s.coupons);
     const addPoints = usePointStore((s) => s.addPoints);
     const useCouponFromStore = usePointStore((s) => s.useCoupon);
+    const addOrder = useOrderStore((s) => s.addOrder);
 
     const [payMethod, setPayMethod] = useState<PayMethod>('kakao');
 
@@ -85,7 +87,25 @@ export function CheckoutScreen({navigation}: Props) {
         if (usePoints && pointDiscount > 0) {
             addPoints(-pointDiscount, '식재료 구매 결제');
         }
-        addPoints(earnedPoints, `식재료 구매 포인트 적립`);
+        addPoints(earnedPoints, '식재료 구매 포인트 적립');
+        addOrder({
+            storeName: store?.name ?? '알 수 없는 매장',
+            storeEmoji: store?.emoji ?? '🛒',
+            items: items.map((i) => ({
+                name: i.product.name,
+                emoji: i.product.emoji,
+                price: i.product.price,
+                quantity: i.quantity,
+            })),
+            subtotal,
+            deliveryFee,
+            couponDiscount,
+            pointDiscount,
+            finalTotal,
+            earnedPoints,
+            payMethod: payMethod === 'kakao' ? '카카오페이' : '신용카드',
+            deliveryTime: store?.deliveryTime ?? 30,
+        });
         clearCart();
         navigation.replace('OrderComplete', {
             earnedPoints,

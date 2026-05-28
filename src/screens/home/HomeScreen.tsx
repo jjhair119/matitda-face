@@ -4,6 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useAuthStore} from '../../store/authStore';
 import {useMealStore} from '../../store/mealStore';
+import {useNotificationStore} from '../../store/notificationStore';
 import {HomeStackParamList} from '../../navigation/HomeStackNavigator';
 import {colors} from '../../theme';
 
@@ -33,6 +34,7 @@ const mb = StyleSheet.create({
 export function HomeScreen({navigation}: Props) {
     const user = useAuthStore((s) => s.user);
     const meals = useMealStore((s) => s.meals);
+    const unreadCount = useNotificationStore((s) => s.notifications.filter((n) => !n.read).length);
 
     const tdee = user?.tdee ?? 1820;
     const nickname = user?.nickname ?? '사용자';
@@ -66,9 +68,17 @@ export function HomeScreen({navigation}: Props) {
                         <Text style={s.greeting}>안녕하세요, {nickname}님 👋</Text>
                         <Text style={s.greetingSub}>오늘도 건강한 하루!</Text>
                     </View>
-                    <View style={s.avatar}>
-                        <Text style={{fontSize: 18}}>🙂</Text>
-                    </View>
+                    <TouchableOpacity
+                        style={s.bellBtn}
+                        onPress={() => navigation.navigate('Notification')}
+                    >
+                        <Text style={{fontSize: 20}}>🔔</Text>
+                        {unreadCount > 0 && (
+                            <View style={s.bellBadge}>
+                                <Text style={s.bellBadgeText}>{unreadCount}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
                 </View>
 
                 {/* 칼로리 카드 */}
@@ -138,6 +148,20 @@ const s = StyleSheet.create({
         alignItems: 'center',
         height: 56,
     },
+    bellBtn: {padding: 4, position: 'relative'},
+    bellBadge: {
+        position: 'absolute',
+        top: 2,
+        right: 2,
+        backgroundColor: colors.accent2,
+        borderRadius: 8,
+        minWidth: 16,
+        height: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 3,
+    },
+    bellBadgeText: {fontSize: 9, fontWeight: '700', color: '#fff'},
     greeting: {fontSize: 16, fontWeight: '700', color: colors.text},
     greetingSub: {fontSize: 11, color: colors.sub, marginTop: 2},
     avatar: {

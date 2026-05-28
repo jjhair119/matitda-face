@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef} from 'react';
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Animated} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Animated, TextInput} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {colors} from '../../theme';
 import {Friend, fetchFollowing, fetchFollowers, fetchSuggestedFriends} from '../../api/friends';
@@ -133,6 +133,8 @@ export function FriendsScreen() {
     const [followers, setFollowers] = useState<Friend[]>([]);
     const [suggested, setSuggested] = useState<Friend[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         (async () => {
@@ -145,17 +147,46 @@ export function FriendsScreen() {
         })();
     }, []);
 
-    const list = activeTab === '팔로잉' ? following : activeTab === '팔로워' ? followers : suggested;
+    const baseList = activeTab === '팔로잉' ? following : activeTab === '팔로워' ? followers : suggested;
+    const list = searchQuery
+        ? baseList.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        : baseList;
     const counts = {팔로잉: following.length, 팔로워: followers.length, 추천: suggested.length};
+
+    const toggleSearch = () => {
+        if (searchOpen) {
+            setSearchQuery('');
+        }
+        setSearchOpen((v) => !v);
+    };
 
     return (
         <SafeAreaView style={s.container}>
             <View style={s.header}>
                 <Text style={s.title}>친구</Text>
-                <TouchableOpacity>
-                    <Text style={{fontSize: 18}}>🔍</Text>
+                <TouchableOpacity onPress={toggleSearch}>
+                    <Text style={{fontSize: 18}}>{searchOpen ? '✕' : '🔍'}</Text>
                 </TouchableOpacity>
             </View>
+
+            {searchOpen && (
+                <View style={s.searchBar}>
+                    <TextInput
+                        style={s.searchInput}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        placeholder="친구 이름 검색"
+                        placeholderTextColor={colors.sub}
+                        autoFocus
+                        returnKeyType="search"
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')} style={s.searchClear}>
+                            <Text style={{fontSize: 14, color: colors.sub}}>✕</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
 
             <View style={s.tabs}>
                 {TABS.map((tab) => (
@@ -171,6 +202,12 @@ export function FriendsScreen() {
             {loading ? (
                 <View style={s.loadingBox}>
                     <ActivityIndicator color={colors.accent}/>
+                </View>
+            ) : list.length === 0 ? (
+                <View style={s.loadingBox}>
+                    <Text style={{fontSize: 13, color: colors.sub}}>
+                        {searchQuery ? `"${searchQuery}" 검색 결과가 없어요` : '친구가 없어요'}
+                    </Text>
                 </View>
             ) : (
                 <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
@@ -196,6 +233,20 @@ const s = StyleSheet.create({
     tabText: {fontSize: 12, color: colors.sub, fontWeight: '500'},
     tabTextActive: {color: colors.accent, fontWeight: '600'},
     tabUnderline: {position: 'absolute', bottom: 0, left: 14, right: 14, height: 2, backgroundColor: colors.accent, borderRadius: 1},
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: 14,
+        marginBottom: 6,
+        backgroundColor: colors.surface2,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: colors.border,
+        paddingHorizontal: 12,
+        height: 40,
+    },
+    searchInput: {flex: 1, fontSize: 13, color: colors.text},
+    searchClear: {padding: 4},
     scroll: {flex: 1, paddingHorizontal: 14, paddingTop: 8},
     loadingBox: {flex: 1, alignItems: 'center', justifyContent: 'center'},
     card: {

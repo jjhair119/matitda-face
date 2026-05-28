@@ -2,11 +2,13 @@ import React from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {HomeScreen} from '../screens/home/HomeScreen';
 import {MealUploadScreen} from '../screens/home/MealUploadScreen';
+import {NotificationScreen} from '../screens/home/NotificationScreen';
 import {MealId} from '../store/mealStore';
 
 export type HomeStackParamList = {
     Home: undefined;
     MealUpload: {mealId: MealId};
+    Notification: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -19,6 +21,11 @@ export function HomeStackNavigator() {
                 name="MealUpload"
                 component={MealUploadScreen}
                 options={{animation: 'slide_from_bottom'}}
+            />
+            <Stack.Screen
+                name="Notification"
+                component={NotificationScreen}
+                options={{animation: 'slide_from_right'}}
             />
         </Stack.Navigator>
     );

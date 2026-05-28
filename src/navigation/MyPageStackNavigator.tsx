@@ -4,12 +4,14 @@ import {MyPageScreen} from '../screens/mypage/MyPageScreen';
 import {ProfileEditScreen} from '../screens/mypage/ProfileEditScreen';
 import {PointCouponScreen} from '../screens/mypage/PointCouponScreen';
 import {DietHistoryScreen} from '../screens/mypage/DietHistoryScreen';
+import {OrderHistoryScreen} from '../screens/mypage/OrderHistoryScreen';
 
 export type MyPageStackParamList = {
     MyPage: undefined;
     ProfileEdit: undefined;
     PointCoupon: undefined;
     DietHistory: undefined;
+    OrderHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<MyPageStackParamList>();
@@ -21,6 +23,7 @@ export function MyPageStackNavigator() {
             <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} options={{animation: 'slide_from_right'}}/>
             <Stack.Screen name="PointCoupon" component={PointCouponScreen} options={{animation: 'slide_from_right'}}/>
             <Stack.Screen name="DietHistory" component={DietHistoryScreen} options={{animation: 'slide_from_right'}}/>
+            <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} options={{animation: 'slide_from_right'}}/>
         </Stack.Navigator>
     );
 }
