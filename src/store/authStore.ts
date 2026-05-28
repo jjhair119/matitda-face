@@ -25,6 +25,7 @@ interface AuthState {
     setLoggedIn: (v: boolean) => void;
     setOnboarded: (v: boolean) => void;
     setDraftProfile: (partial: Partial<UserProfile>) => void;
+    updateUser: (partial: Partial<UserProfile>) => void;
     logout: () => void;
 }
 
@@ -38,5 +39,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     setOnboarded: (isOnboarded) => set({isOnboarded}),
     setDraftProfile: (partial) =>
         set((state) => ({draftProfile: {...state.draftProfile, ...partial}})),
+    updateUser: (partial) =>
+        set((state) => ({user: state.user ? {...state.user, ...partial} : null})),
     logout: () => set({isLoggedIn: false, isOnboarded: false, user: null, draftProfile: {}}),
 }));

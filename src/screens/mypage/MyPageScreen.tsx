@@ -1,9 +1,14 @@
 import React from 'react';
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useAuthStore} from '../../store/authStore';
 import {useMealStore} from '../../store/mealStore';
+import {usePointStore} from '../../store/pointStore';
+import {MyPageStackParamList} from '../../navigation/MyPageStackNavigator';
 import {colors} from '../../theme';
+
+type Props = NativeStackScreenProps<MyPageStackParamList, 'MyPage'>;
 
 const GOAL_LABELS: Record<string, string> = {
     lose: '🔥 체중 감량',
@@ -11,31 +16,20 @@ const GOAL_LABELS: Record<string, string> = {
     gain: '💪 근육 증가',
 };
 
-const DIET_STYLE_LABELS: Record<string, string> = {
-    vegetarian: '🥗 채식',
-    normal: '🍖 일반',
-    keto: '🥩 키토',
-};
-
-const ACTIVITY_LABELS: Record<string, string> = {
-    low: '🛋️ 적음',
-    normal: '🚶 보통',
-    high: '🏃 많음',
-};
-
 const WEEK_DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 const DUMMY_WEEK_SCORES: (number | null)[] = [88, 92, null, 76, null, null, null];
 
-export function MyPageScreen() {
+export function MyPageScreen({navigation}: Props) {
     const user = useAuthStore((s) => s.user);
     const meals = useMealStore((s) => s.meals);
+    const points = usePointStore((s) => s.points);
+    const coupons = usePointStore((s) => s.coupons);
 
     const todayScores = meals.filter((m) => m.score !== null).map((m) => m.score!);
     const todayAvg = todayScores.length > 0
         ? Math.round(todayScores.reduce((a, b) => a + b, 0) / todayScores.length)
         : null;
 
-    // 오늘(금요일 기준)을 인덱스 4(금)에 배치
     const todayIdx = 4;
     const weekScores = DUMMY_WEEK_SCORES.map((score, idx) =>
         idx === todayIdx ? todayAvg : score,
@@ -50,6 +44,12 @@ export function MyPageScreen() {
         {label: '키', value: user ? `${user.height}cm` : '-'},
         {label: '몸무게', value: user ? `${user.weight}kg` : '-'},
     ];
+
+    const handle = user?.nickname
+        ? `@${user.nickname.toLowerCase().replace(/\s+/g, '')}`
+        : '@-';
+
+    const availableCoupons = coupons.filter((c) => !c.used).length;
 
     return (
         <SafeAreaView style={s.container} edges={['top']}>
@@ -66,10 +66,10 @@ export function MyPageScreen() {
                     <View style={s.profileInfo}>
                         <Text style={s.profileName}>{user?.nickname ?? '-'}</Text>
                         <Text style={s.profileSub}>
-                            {user ? `${DIET_STYLE_LABELS[user.dietStyle] ?? ''} · ${ACTIVITY_LABELS[user.activityLevel] ?? ''}` : ''}
+                            {handle} · 팔로잉 24 · 팔로워 31
                         </Text>
                     </View>
-                    <TouchableOpacity style={s.editBtn}>
+                    <TouchableOpacity style={s.editBtn} onPress={() => navigation.navigate('ProfileEdit')}>
                         <Text style={s.editBtnText}>편집</Text>
                     </TouchableOpacity>
                 </View>
@@ -109,6 +109,63 @@ export function MyPageScreen() {
                         </Text>
                     </View>
                 </View>
+
+                {/* 포인트 & 쿠폰 */}
+                <Text style={s.sectionLabel}>보유 포인트 & 쿠폰</Text>
+                <TouchableOpacity
+                    style={[s.card, s.pointCard]}
+                    onPress={() => navigation.navigate('PointCoupon')}
+                    activeOpacity={0.85}
+                >
+                    <View>
+                        <Text style={s.pointValue}>{points.toLocaleString()} P</Text>
+                        <Text style={s.pointSub}>
+                            쿠폰 {availableCoupons}장 보유
+                        </Text>
+                    </View>
+                    <View style={s.historyBtn}>
+                        <Text style={s.historyBtnText}>내역 보기</Text>
+                    </View>
+                </TouchableOpacity>
+
+                {/* 식단 히스토리 */}
+                <View style={s.historyHeader}>
+                    <Text style={s.sectionLabel}>식단 히스토리</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('DietHistory')}>
+                        <Text style={s.viewAllBtn}>전체 보기 →</Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                    style={s.card}
+                    onPress={() => navigation.navigate('DietHistory')}
+                    activeOpacity={0.85}
+                >
+                    <View style={s.weekGrid}>
+                        {WEEK_DAYS.map((day, idx) => {
+                            const score = weekScores[idx];
+                            const isToday = idx === todayIdx;
+                            return (
+                                <View key={day} style={s.weekCol}>
+                                    <Text style={[s.dayLabel, isToday && s.dayLabelToday]}>{day}</Text>
+                                    {score != null ? (
+                                        <View style={[s.scoreCell, {backgroundColor: `rgba(184,255,78,${score / 100})`}]}>
+                                            <Text style={s.scoreCellText}>{score}</Text>
+                                        </View>
+                                    ) : (
+                                        <View style={[s.scoreCell, s.scoreCellEmpty, isToday && s.scoreCellToday]}/>
+                                    )}
+                                </View>
+                            );
+                        })}
+                    </View>
+                    {weekAvg !== null ? (
+                        <Text style={s.weekAvg}>
+                            이번 주 평균 <Text style={s.weekAvgAccent}>{weekAvg}점</Text>
+                        </Text>
+                    ) : (
+                        <Text style={s.weekAvg}>아직 기록된 식단이 없어요</Text>
+                    )}
+                </TouchableOpacity>
 
                 {/* 건강 정보 */}
                 {user && (user.allergies.length > 0 || user.diseases.length > 0) && (
@@ -150,48 +207,6 @@ export function MyPageScreen() {
                         </View>
                     </>
                 )}
-
-                {/* 포인트 */}
-                <Text style={s.sectionLabel}>보유 포인트 & 쿠폰</Text>
-                <View style={[s.card, s.pointCard]}>
-                    <View>
-                        <Text style={s.pointValue}>9,000 P</Text>
-                        <Text style={s.pointSub}>쿠폰 2장 보유</Text>
-                    </View>
-                    <TouchableOpacity style={s.historyBtn}>
-                        <Text style={s.historyBtnText}>내역 보기</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* 식단 히스토리 */}
-                <Text style={s.sectionLabel}>식단 히스토리</Text>
-                <View style={s.card}>
-                    <View style={s.weekGrid}>
-                        {WEEK_DAYS.map((day, idx) => {
-                            const score = weekScores[idx];
-                            const isToday = idx === todayIdx;
-                            return (
-                                <View key={day} style={s.weekCol}>
-                                    <Text style={[s.dayLabel, isToday && s.dayLabelToday]}>{day}</Text>
-                                    {score != null ? (
-                                        <View style={[s.scoreCell, {backgroundColor: `rgba(184,255,78,${score / 100})`}]}>
-                                            <Text style={s.scoreCellText}>{score}</Text>
-                                        </View>
-                                    ) : (
-                                        <View style={[s.scoreCell, s.scoreCellEmpty, isToday && s.scoreCellToday]}/>
-                                    )}
-                                </View>
-                            );
-                        })}
-                    </View>
-                    {weekAvg !== null ? (
-                        <Text style={s.weekAvg}>
-                            이번 주 평균 <Text style={s.weekAvgAccent}>{weekAvg}점</Text>
-                        </Text>
-                    ) : (
-                        <Text style={s.weekAvg}>아직 기록된 식단이 없어요</Text>
-                    )}
-                </View>
             </ScrollView>
         </SafeAreaView>
     );
@@ -296,6 +311,15 @@ const s = StyleSheet.create({
         borderColor: 'rgba(184,255,78,0.2)',
     },
     historyBtnText: {fontSize: 11, color: colors.accent},
+
+    historyHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 4,
+        marginBottom: 6,
+    },
+    viewAllBtn: {fontSize: 11, color: colors.accent},
 
     weekGrid: {flexDirection: 'row', marginBottom: 8},
     weekCol: {flex: 1, alignItems: 'center', gap: 6},
