@@ -157,6 +157,7 @@ export function StoreDetailScreen({navigation, route}: Props) {
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                style={s.categoryScroll}
                 contentContainerStyle={s.categoryRow}
             >
                 {availableCategories.map((cat) => (
@@ -282,14 +283,14 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        height: 56,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
     },
     backBtn: {padding: 4, marginRight: 8},
-    backText: {fontSize: 20, color: colors.text},
+    backText: {fontSize: 22, color: colors.text},
     headerCenter: {flex: 1},
-    headerTitle: {fontSize: 15, fontWeight: '700', color: colors.text},
+    headerTitle: {fontSize: 16, fontWeight: '600', color: colors.text},
     headerSub: {fontSize: 11, color: colors.sub, marginTop: 1},
     cartBtn: {padding: 4, position: 'relative'},
     cartIcon: {fontSize: 22},
@@ -322,7 +323,8 @@ const s = StyleSheet.create({
     infoDivider: {fontSize: 11, color: colors.border2},
     infoBadge: {fontSize: 11, color: colors.teal, fontWeight: '500'},
 
-    categoryRow: {paddingHorizontal: 16, paddingVertical: 10, gap: 6},
+    categoryScroll: {height: 48, flexGrow: 0},
+    categoryRow: {paddingHorizontal: 16, gap: 6, alignItems: 'center'},
     categoryChip: {
         paddingHorizontal: 14,
         paddingVertical: 6,

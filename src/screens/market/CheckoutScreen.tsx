@@ -270,13 +270,13 @@ const s = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        height: 56,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
     },
     backBtn: {padding: 4},
-    backText: {fontSize: 20, color: colors.text},
-    headerTitle: {fontSize: 15, fontWeight: '600', color: colors.text},
+    backText: {fontSize: 22, color: colors.text},
+    headerTitle: {fontSize: 16, fontWeight: '600', color: colors.text},
 
     section: {paddingHorizontal: 16, marginTop: 16},
     sectionLabel: {

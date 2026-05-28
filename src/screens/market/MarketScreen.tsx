@@ -150,6 +150,7 @@ export function MarketScreen({navigation}: Props) {
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
+                        style={s.categoryScroll}
                         contentContainerStyle={s.categoryRow}
                     >
                         {CATEGORIES.map((cat) => (
@@ -274,10 +275,9 @@ const s = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingTop: 6,
-        paddingBottom: 10,
+        height: 56,
     },
-    headerTitle: {fontSize: 18, fontWeight: '700', color: colors.text},
+    headerTitle: {fontSize: 16, fontWeight: '700', color: colors.text},
     headerSub: {fontSize: 11, color: colors.sub, marginTop: 2},
     mapBtn: {padding: 4},
     mapIcon: {fontSize: 22},
@@ -324,7 +324,8 @@ const s = StyleSheet.create({
     },
     cartFabArrowText: {fontSize: 16, color: colors.bg, fontWeight: '700'},
 
-    categoryRow: {paddingHorizontal: 16, paddingBottom: 12, gap: 6},
+    categoryScroll: {height: 52, flexGrow: 0},
+    categoryRow: {paddingHorizontal: 16, gap: 6, alignItems: 'center'},
     categoryChip: {
         paddingHorizontal: 14,
         paddingVertical: 7,

@@ -136,7 +136,7 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 14,
+        height: 56,
     },
     greeting: {fontSize: 16, fontWeight: '700', color: colors.text},
     greetingSub: {fontSize: 11, color: colors.sub, marginTop: 2},

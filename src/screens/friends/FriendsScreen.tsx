@@ -189,7 +189,7 @@ export function FriendsScreen() {
 
 const s = StyleSheet.create({
     container: {flex: 1, backgroundColor: colors.bg},
-    header: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14},
+    header: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 56},
     title: {fontSize: 16, fontWeight: '700', color: colors.text},
     tabs: {flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: 4},
     tabItem: {paddingHorizontal: 14, paddingVertical: 8, position: 'relative'},
