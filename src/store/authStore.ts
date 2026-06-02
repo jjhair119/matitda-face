@@ -1,8 +1,10 @@
 import {create} from 'zustand';
+import {removeToken} from '../api/client';
 
 export interface UserProfile {
     id: string;
     nickname: string;
+    email?: string;
     age: number;
     gender: 'M' | 'F';
     height: number;
@@ -41,5 +43,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         set((state) => ({draftProfile: {...state.draftProfile, ...partial}})),
     updateUser: (partial) =>
         set((state) => ({user: state.user ? {...state.user, ...partial} : null})),
-    logout: () => set({isLoggedIn: false, isOnboarded: false, user: null, draftProfile: {}}),
+    logout: () => {
+        removeToken();
+        set({isLoggedIn: false, isOnboarded: false, user: null, draftProfile: {}});
+    },
 }));

@@ -1,37 +1,39 @@
-export interface LoginResult {
-    id: string;
-    provider: 'kakao' | 'google';
-}
+import {api} from './client';
 
-export interface OnboardingSubmission {
-    id: string;
+// PATCH /users/me — 온보딩 1단계: 기본 신체 정보
+export async function saveBasicInfo(params: {
     nickname: string;
     age: number;
     gender: 'M' | 'F';
-    height: number;
-    weight: number;
-    activityLevel: 'low' | 'normal' | 'high';
+    height_cm: number;
+    weight_kg: number;
+    activity_level: 'low' | 'medium' | 'high';
+    diet_goal: string;
+}): Promise<{user: Record<string, unknown>}> {
+    const {data} = await api.patch('/users/me', params);
+    return data;
+}
+
+// PATCH /users/me/health — 온보딩 2단계: 건강 정보
+export async function saveHealthInfo(params: {
     allergies: string[];
     diseases: string[];
-    dietStyle: 'vegetarian' | 'normal' | 'keto';
-    preferredIngredients: string[];
-    dietGoal: 'lose' | 'maintain' | 'gain';
-    tdee: number;
+    diet_style: '일반' | '채식' | '키토';
+}): Promise<void> {
+    await api.patch('/users/me/health', params);
 }
 
-const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
-
-export async function loginWithKakao(): Promise<LoginResult> {
-    await delay(900);
-    return {id: `kakao_${Date.now()}`, provider: 'kakao'};
+// PATCH /users/me/preferences — 온보딩 3단계: 선호/비선호 식재료
+export async function savePreferences(preferences: {
+    ingredient_name: string;
+    category: string;
+    preference: 'like' | 'dislike';
+}[]): Promise<void> {
+    await api.patch('/users/me/preferences', {preferences});
 }
 
-export async function loginWithGoogle(): Promise<LoginResult> {
-    await delay(900);
-    return {id: `google_${Date.now()}`, provider: 'google'};
-}
-
-export async function submitOnboarding(profile: OnboardingSubmission): Promise<{success: boolean}> {
-    await delay(1200);
-    return {success: true};
+// GET /users/me — 내 정보 조회
+export async function getMyInfo() {
+    const {data} = await api.get('/users/me');
+    return data;
 }

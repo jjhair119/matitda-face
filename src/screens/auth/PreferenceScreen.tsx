@@ -4,7 +4,7 @@ import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {OnboardingStackParamList} from '../../navigation/OnboardingNavigator';
 import {useAuthStore, UserProfile} from '../../store/authStore';
-import {submitOnboarding} from '../../api/onboarding';
+import {saveBasicInfo, saveHealthInfo, savePreferences} from '../../api/onboarding';
 import {colors} from '../../theme';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Preference'>;
@@ -80,7 +80,34 @@ export function PreferenceScreen({}: Props) {
         setLoading(true);
         try {
             const finalDraft = {...draftProfile, preferredIngredients: allSelected, dietGoal: goal!};
-            await submitOnboarding(finalDraft as Parameters<typeof submitOnboarding>[0]);
+
+            const activityMap = {low: 'low', normal: 'medium', high: 'high'} as const;
+            const dietStyleMap = {normal: '일반', vegetarian: '채식', keto: '키토'} as const;
+            const dietGoalMap = {lose: '다이어트', maintain: '체중 유지', gain: '근육 증가'} as const;
+
+            await saveBasicInfo({
+                nickname: finalDraft.nickname ?? '',
+                age: finalDraft.age ?? 0,
+                gender: finalDraft.gender ?? 'F',
+                height_cm: finalDraft.height ?? 0,
+                weight_kg: finalDraft.weight ?? 0,
+                activity_level: activityMap[finalDraft.activityLevel ?? 'normal'],
+                diet_goal: dietGoalMap[goal!],
+            });
+
+            await saveHealthInfo({
+                allergies: finalDraft.allergies ?? [],
+                diseases: finalDraft.diseases ?? [],
+                diet_style: dietStyleMap[finalDraft.dietStyle ?? 'normal'],
+            });
+
+            await savePreferences(
+                allSelected.map((name) => ({
+                    ingredient_name: name.replace(/^[\p{Emoji}\s]+/u, '').trim(),
+                    category: 'general',
+                    preference: 'like' as const,
+                })),
+            );
 
             const profile: UserProfile = {
                 id: finalDraft.id ?? `user_${Date.now()}`,
