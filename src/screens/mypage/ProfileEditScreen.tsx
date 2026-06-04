@@ -9,11 +9,13 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {MyPageStackParamList} from '../../navigation/MyPageStackNavigator';
 import {useAuthStore} from '../../store/authStore';
+import {saveBasicInfo, saveHealthInfo} from '../../api/onboarding';
 import {colors} from '../../theme';
 
 type Props = NativeStackScreenProps<MyPageStackParamList, 'ProfileEdit'>;
@@ -52,6 +54,14 @@ function calcTdee(
     return Math.round(bmr * mult);
 }
 
+const DIET_STYLE_MAP: Record<string, '일반' | '채식' | '키토'> = {
+    normal: '일반',
+    vegetarian: '채식',
+    keto: '키토',
+};
+
+const stripEmoji = (s: string) => s.replace(/^[\p{Emoji}\s]+/u, '').trim();
+
 export function ProfileEditScreen({navigation}: Props) {
     const user = useAuthStore((s) => s.user);
     const updateUser = useAuthStore((s) => s.updateUser);
@@ -66,6 +76,7 @@ export function ProfileEditScreen({navigation}: Props) {
     const [diseases, setDiseases] = useState<string[]>(user?.diseases ?? []);
     const [dietStyle, setDietStyle] = useState<'vegetarian' | 'normal' | 'keto'>(user?.dietStyle ?? 'normal');
     const [goal, setGoal] = useState<'lose' | 'maintain' | 'gain'>(user?.dietGoal ?? 'lose');
+    const [saving, setSaving] = useState(false);
 
     const h = parseFloat(height);
     const w = parseFloat(weight);
@@ -76,25 +87,47 @@ export function ProfileEditScreen({navigation}: Props) {
         setArr(arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item]);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!nickname.trim()) {
             Alert.alert('닉네임을 입력해주세요');
             return;
         }
-        updateUser({
-            nickname: nickname.trim(),
-            age: a > 0 ? a : user?.age,
-            gender,
-            height: h >= 100 ? h : user?.height,
-            weight: w >= 20 ? w : user?.weight,
-            activityLevel: activity,
-            allergies,
-            diseases,
-            dietStyle,
-            dietGoal: goal,
-            tdee: tdee > 0 ? tdee : user?.tdee,
-        });
-        navigation.goBack();
+        setSaving(true);
+        try {
+            const actLevel = activity === 'normal' ? 'medium' : activity as 'low' | 'high';
+            await saveBasicInfo({
+                nickname: nickname.trim(),
+                age: a > 0 ? a : user?.age ?? 20,
+                gender,
+                height_cm: h >= 100 ? h : user?.height ?? 160,
+                weight_kg: w >= 20 ? w : user?.weight ?? 60,
+                activity_level: actLevel,
+                diet_goal: goal,
+            });
+            await saveHealthInfo({
+                allergies: allergies.map(stripEmoji),
+                diseases: diseases.map(stripEmoji),
+                diet_style: DIET_STYLE_MAP[dietStyle],
+            });
+            updateUser({
+                nickname: nickname.trim(),
+                age: a > 0 ? a : user?.age,
+                gender,
+                height: h >= 100 ? h : user?.height,
+                weight: w >= 20 ? w : user?.weight,
+                activityLevel: activity,
+                allergies,
+                diseases,
+                dietStyle,
+                dietGoal: goal,
+                tdee: tdee > 0 ? tdee : user?.tdee,
+            });
+            navigation.goBack();
+        } catch {
+            Alert.alert('저장 실패', '다시 시도해주세요');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -104,8 +137,11 @@ export function ProfileEditScreen({navigation}: Props) {
                     <Text style={s.headerBackText}>←</Text>
                 </TouchableOpacity>
                 <Text style={s.headerTitle}>정보 수정</Text>
-                <TouchableOpacity onPress={handleSave} style={s.headerSaveBtn}>
-                    <Text style={s.headerSaveText}>저장</Text>
+                <TouchableOpacity onPress={handleSave} style={s.headerSaveBtn} disabled={saving}>
+                    {saving
+                        ? <ActivityIndicator size="small" color={colors.accent}/>
+                        : <Text style={s.headerSaveText}>저장</Text>
+                    }
                 </TouchableOpacity>
             </View>
 
