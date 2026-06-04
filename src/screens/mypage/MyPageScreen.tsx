@@ -138,8 +138,8 @@ export function MyPageScreen({navigation}: Props) {
                     </View>
                 </TouchableOpacity>
 
-                {/* 식단 히스토리 */}
-                <View style={s.historyHeader}>
+                {/* 식단 히스토리 — API 미구현으로 임시 비활성화 */}
+                {/* <View style={s.historyHeader}>
                     <Text style={s.sectionLabel}>식단 히스토리</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('DietHistory')}>
                         <Text style={s.viewAllBtn}>전체 보기 →</Text>
@@ -175,7 +175,7 @@ export function MyPageScreen({navigation}: Props) {
                     ) : (
                         <Text style={s.weekAvg}>아직 기록된 식단이 없어요</Text>
                     )}
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 {/* 건강 정보 */}
                 {user && (user.allergies.length > 0 || user.diseases.length > 0) && (

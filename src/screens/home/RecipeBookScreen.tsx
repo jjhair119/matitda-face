@@ -21,7 +21,13 @@ export function RecipeBookScreen({navigation}: Props) {
                 style={s.scroll}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={s.header}> <TouchableOpacity onPress={() => navigation.goBack()} > <Text style={s.backBtn}>←</Text> </TouchableOpacity> <Text style={s.title}> 📖 레시피북 </Text> </View> <Text style={s.subtitle}> 저장한 레시피와 AI 생성 레시피를 관리해보세요 </Text>
+                <View style={s.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()}>
+                        <Text style={s.backBtn}>←</Text>
+                    </TouchableOpacity>
+                    <Text style={s.title}>📖 레시피북</Text>
+                </View>
+                <Text style={s.subtitle}>저장한 레시피와 AI 생성 레시피를 관리해보세요</Text>
                 {/* 카테고리 */}
 
 <TouchableOpacity

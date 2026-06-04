@@ -2,27 +2,73 @@ import React, {useState} from 'react';
 import {View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import {OnboardingStackParamList} from '../../navigation/OnboardingNavigator';
 import {useAuthStore} from '../../store/authStore';
-import {loginWithKakao, loginWithGoogle} from '../../api/onboarding';
+import {loginWithDevToken} from '../../api/auth';
+import {saveToken} from '../../api/client';
+import {getMyInfo} from '../../api/onboarding';
 import {colors} from '../../theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'SocialLogin'>;
 
-export function SocialLoginScreen({navigation}: Props) {
-    const {setLoggedIn, setDraftProfile} = useAuthStore();
-    const [loading, setLoading] = useState<'kakao' | 'google' | null>(null);
+const SERVER_URL = 'https://matasitda-backend-production.up.railway.app';
 
-    const handleLogin = async (provider: 'kakao' | 'google') => {
+export function SocialLoginScreen({navigation}: Props) {
+    const {setLoggedIn, setOnboarded, setDraftProfile} = useAuthStore();
+    const [loading, setLoading] = useState<'kakao' | 'dev' | null>(null);
+
+    const handleKakaoLogin = async () => {
         if (loading) return;
-        setLoading(provider);
+        setLoading('kakao');
         try {
-            const result = await (provider === 'kakao' ? loginWithKakao() : loginWithGoogle());
-            setDraftProfile({id: result.id});
+            // 서버의 /auth/kakao/login → 카카오 OAuth → /auth/kakao/callback → /auth/success?token=...&isNewUser=...
+            const loginUrl = `${SERVER_URL}/auth/kakao/login`;
+            const successUrl = 'matitda://auth/success';
+
+            const result = await WebBrowser.openAuthSessionAsync(loginUrl, successUrl);
+
+            if (result.type !== 'success') {
+                return;
+            }
+
+            const query = result.url.split('?')[1] ?? '';
+            const params = Object.fromEntries(query.split('&').map(p => p.split('=')));
+            const token = params['token'];
+            const isNewUser = params['isNewUser'] === 'true';
+
+            if (!token) throw new Error('토큰 없음');
+
+            await saveToken(token);
+            setLoggedIn(true);
+
+            const userInfo = await getMyInfo();
+            const onboardingDone = userInfo.nickname && userInfo.age && userInfo.height_cm && userInfo.weight_kg;
+
+            if (onboardingDone) {
+                setOnboarded(true);
+            } else {
+                navigation.navigate('BasicInfo');
+            }
+        } catch (e) {
+            Alert.alert('카카오 로그인 실패', '잠시 후 다시 시도해주세요.');
+        } finally {
+            setLoading(null);
+        }
+    };
+
+    const handleDevLogin = async () => {
+        if (loading) return;
+        setLoading('dev');
+        try {
+            const data = await loginWithDevToken('테스트유저');
+            setDraftProfile({id: data.userId});
             setLoggedIn(true);
             navigation.navigate('BasicInfo');
         } catch {
-            Alert.alert('로그인 실패', '잠시 후 다시 시도해주세요.');
+            Alert.alert('개발 로그인 실패', '서버 연결을 확인해주세요.');
         } finally {
             setLoading(null);
         }
@@ -37,24 +83,28 @@ export function SocialLoginScreen({navigation}: Props) {
             <View style={s.buttons}>
                 <TouchableOpacity
                     style={[s.kakaoBtn, loading === 'kakao' && s.btnLoading]}
-                    onPress={() => handleLogin('kakao')}
+                    onPress={handleKakaoLogin}
                     disabled={!!loading}
                 >
                     {loading === 'kakao' ? (
-                        <ActivityIndicator color="#3C1E1E"/>
+                        <ActivityIndicator color="#000000"/>
                     ) : (
-                        <Text style={s.kakaoBtnText}>💛 카카오로 시작하기</Text>
+                        <View style={s.kakaoBtnInner}>
+                            <Text style={s.kakaoSymbol}>⬤</Text>
+                            <Text style={s.kakaoBtnText}>카카오로 시작하기</Text>
+                        </View>
                     )}
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                    style={[s.googleBtn, loading === 'google' && s.btnLoading]}
-                    onPress={() => handleLogin('google')}
+                    style={[s.devBtn, loading === 'dev' && s.btnLoading]}
+                    onPress={handleDevLogin}
                     disabled={!!loading}
                 >
-                    {loading === 'google' ? (
-                        <ActivityIndicator color="#333"/>
+                    {loading === 'dev' ? (
+                        <ActivityIndicator color={colors.accent}/>
                     ) : (
-                        <Text style={s.googleBtnText}>🔵 Google로 시작하기</Text>
+                        <Text style={s.devBtnText}>🛠 개발자 로그인 (테스트)</Text>
                     )}
                 </TouchableOpacity>
             </View>
@@ -72,9 +122,11 @@ const s = StyleSheet.create({
     sub: {fontSize: 12, color: colors.sub, marginTop: 6},
     buttons: {gap: 10, marginBottom: 24},
     kakaoBtn: {backgroundColor: '#FEE500', borderRadius: 12, padding: 14, alignItems: 'center'},
-    kakaoBtnText: {fontSize: 14, fontWeight: '700', color: '#3C1E1E'},
-    googleBtn: {backgroundColor: '#fff', borderRadius: 12, padding: 14, alignItems: 'center'},
-    googleBtnText: {fontSize: 14, fontWeight: '700', color: '#333'},
+    kakaoBtnInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
+    kakaoSymbol: {fontSize: 16, color: '#000000'},
+    kakaoBtnText: {fontSize: 14, fontWeight: '700', color: 'rgba(0,0,0,0.85)'},
+    devBtn: {backgroundColor: colors.surface, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.accent},
+    devBtnText: {fontSize: 14, fontWeight: '700', color: colors.accent},
     btnLoading: {opacity: 0.7},
     terms: {textAlign: 'center', fontSize: 10, color: colors.sub, lineHeight: 17, marginBottom: 16},
 });

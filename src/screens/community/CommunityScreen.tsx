@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Pressable,
   FlatList,
   BackHandler,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import {Post as ApiPost, fetchPosts, fetchPostById, createPost, toggleLike, toggleBookmark, deletePost} from '../../api/posts';
+import {useAuthStore} from '../../store/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ─── 색상 팔레트 ──────────────────────────────────────────────────────────────
@@ -30,67 +33,17 @@ const C = {
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 type Screen = 'feed' | 'hashtagSearch' | 'writePost' | 'postDetail';
+type Post = ApiPost;
 
-interface Post {
-  id: number;
-  author: string;
-  authorInitial: string;
-  timeAgo: string;
-  title: string;
-  emoji: string;
-  tags: string[];
-  likes: number;
-  saves: number;
-  comments: number;
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return '방금 전';
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  return `${Math.floor(h / 24)}일 전`;
 }
-
-// ─── 목업 데이터 ──────────────────────────────────────────────────────────────
-const MOCK_POSTS: Post[] = [
-  {
-    id: 1,
-    author: '지민의 식탁',
-    authorInitial: '지',
-    timeAgo: '2시간 전',
-    title: '다이어트 닭가슴살 볶음밥 🍳',
-    emoji: '🍳',
-    tags: ['닭가슴살', '브로콜리', '다이어트'],
-    likes: 87,
-    saves: 34,
-    comments: 12,
-  },
-  {
-    id: 2,
-    author: '헬시밀',
-    authorInitial: '헬',
-    timeAgo: '5시간 전',
-    title: '두부 스크램블 에그 샐러드 🥗',
-    emoji: '🥗',
-    tags: ['두부', '달걀', '저칼로리'],
-    likes: 54,
-    saves: 21,
-    comments: 7,
-  },
-  {
-    id: 3,
-    author: '근손실방지위원회',
-    authorInitial: '근',
-    timeAgo: '어제',
-    title: '고단백 연어 덮밥 🐟',
-    emoji: '🐟',
-    tags: ['연어', '현미밥', '고단백'],
-    likes: 120,
-    saves: 88,
-    comments: 23,
-  },
-];
-
-const RECIPE_STEPS = [
-  '닭가슴살을 한 입 크기로 썬다',
-  '브로콜리를 살짝 데친다',
-  '팬에 참기름을 두르고 마늘을 볶는다',
-  '닭가슴살 → 채소 순으로 넣고 볶는다',
-  '현미밥 추가 후 간장 1T, 소금으로 간한다',
-];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 1. 커뮤니티 피드 화면
@@ -105,10 +58,30 @@ function FeedScreen({
   onPostPress: (post: Post) => void;
 }) {
   const [activeTab, setActiveTab] = useState<'추천' | '팔로잉' | '최신'>('추천');
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
+  const loadPosts = useCallback(async (cursor?: string) => {
+    setError(false);
+    try {
+      const result = await fetchPosts({limit: 20, cursor});
+      setPosts(prev => cursor ? [...prev, ...result.posts] : result.posts);
+      setNextCursor(result.next_cursor);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPosts();
+  }, []);
 
   return (
     <View style={s.flex1}>
-      {/* 헤더 */}
       <View style={s.feedHeader}>
         <Text style={s.feedTitle}>커뮤니티</Text>
         <TouchableOpacity onPress={onWritePress} hitSlop={8}>
@@ -121,24 +94,15 @@ function FeedScreen({
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 검색창 */}
         <TouchableOpacity
           style={s.searchBar}
-          onPress={() => onHashtagPress('닭가슴살')}
+          onPress={() => onHashtagPress('')}
           activeOpacity={0.7}
         >
           <Text style={s.searchIcon}>🔍</Text>
           <Text style={s.searchPlaceholder}>#재료명으로 레시피 검색 (예: #닭가슴살)</Text>
         </TouchableOpacity>
 
-        {/* TOP1 배너 */}
-        <View style={s.topBanner}>
-          <Text style={s.topBannerLabel}>🏆 이번 주 TOP 1</Text>
-          <Text style={s.topBannerTitle}>초간단 단백질 도시락 레시피</Text>
-          <Text style={s.topBannerStats}>❤️ 342 · 💾 218 · 👁 1,204</Text>
-        </View>
-
-        {/* 탭 */}
         <View style={s.tabBar}>
           {(['추천', '팔로잉', '최신'] as const).map(tab => (
             <TouchableOpacity
@@ -146,58 +110,63 @@ function FeedScreen({
               onPress={() => setActiveTab(tab)}
               style={[s.tab, activeTab === tab && s.tabActive]}
             >
-              <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>
-                {tab}
-              </Text>
+              <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>{tab}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* 게시글 카드 목록 */}
-        {MOCK_POSTS.map(post => (
-          <TouchableOpacity
-            key={post.id}
-            style={s.postCard}
-            onPress={() => onPostPress(post)}
-            activeOpacity={0.8}
-          >
-            {/* 썸네일 */}
-            <View style={s.postThumb}>
-              <Text style={s.postThumbEmoji}>{post.emoji}</Text>
-            </View>
-            {/* 콘텐츠 */}
-            <View style={s.postContent}>
-              {/* 작성자 행 */}
-              <View style={s.postMeta}>
-                <View style={s.authorAvatar}>
-                  <Text style={s.authorInitial}>{post.authorInitial}</Text>
+        {loading ? (
+          <ActivityIndicator color={C.accent} style={{marginTop: 40}}/>
+        ) : error ? (
+          <View style={{alignItems: 'center', marginTop: 40, gap: 12}}>
+            <Text style={{color: C.sub}}>게시글을 불러오지 못했어요</Text>
+            <TouchableOpacity onPress={() => loadPosts()} style={{paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: C.accent}}>
+              <Text style={{color: C.accent, fontSize: 13}}>재시도</Text>
+            </TouchableOpacity>
+          </View>
+        ) : posts.length === 0 ? (
+          <Text style={{color: C.sub, textAlign: 'center', marginTop: 40}}>게시글이 없어요</Text>
+        ) : (
+          posts.map(post => (
+            <TouchableOpacity
+              key={post.id}
+              style={s.postCard}
+              onPress={() => onPostPress(post)}
+              activeOpacity={0.8}
+            >
+              <View style={s.postThumb}>
+                <Text style={s.postThumbEmoji}>🍽️</Text>
+              </View>
+              <View style={s.postContent}>
+                <View style={s.postMeta}>
+                  <View style={s.authorAvatar}>
+                    <Text style={s.authorInitial}>{post.nickname?.[0] ?? '?'}</Text>
+                  </View>
+                  <Text style={s.authorName}>{post.nickname}</Text>
+                  <Text style={s.timeAgo}>{timeAgo(post.created_at)}</Text>
                 </View>
-                <Text style={s.authorName}>{post.author}</Text>
-                <Text style={s.timeAgo}>{post.timeAgo}</Text>
+                <Text style={s.postTitle} numberOfLines={2}>{post.content}</Text>
+                <View style={s.tagRow}>
+                  {post.tags.map(tag => (
+                    <TouchableOpacity key={tag} onPress={() => onHashtagPress(tag)} hitSlop={4}>
+                      <Text style={s.hashTag}>#{tag}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={s.postStats}>
+                  <Text style={s.statText}>❤️ {post.like_count}</Text>
+                  <Text style={s.statText}>{post.is_bookmarked ? '🔖' : '💾'}</Text>
+                </View>
               </View>
-              {/* 제목 */}
-              <Text style={s.postTitle}>{post.title}</Text>
-              {/* 해시태그 */}
-              <View style={s.tagRow}>
-                {post.tags.map(tag => (
-                  <TouchableOpacity
-                    key={tag}
-                    onPress={() => onHashtagPress(tag)}
-                    hitSlop={4}
-                  >
-                    <Text style={s.hashTag}>#{tag}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {/* 반응 */}
-              <View style={s.postStats}>
-                <Text style={s.statText}>❤️ {post.likes}</Text>
-                <Text style={s.statText}>💾 {post.saves}</Text>
-                <Text style={s.statText}>💬 {post.comments}</Text>
-              </View>
-            </View>
+            </TouchableOpacity>
+          ))
+        )}
+
+        {nextCursor && (
+          <TouchableOpacity style={s.loadMoreBtn} onPress={() => loadPosts(nextCursor)}>
+            <Text style={s.loadMoreText}>더 보기</Text>
           </TouchableOpacity>
-        ))}
+        )}
       </ScrollView>
     </View>
   );
@@ -209,22 +178,35 @@ function FeedScreen({
 function HashtagSearchScreen({
   initialTag,
   onBack,
+  onPostPress,
 }: {
   initialTag: string;
   onBack: () => void;
+  onPostPress: (post: Post) => void;
 }) {
   const [searchText, setSearchText] = useState(initialTag);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const RELATED_TAGS = ['닭가슴살', '닭안심', '훈제닭'];
-  const RESULTS = [
-    { emoji: '🍳', title: '닭가슴살 볶음밥', tags: '#닭가슴살 #현미 #브로콜리', kcal: '520kcal' },
-    { emoji: '🥗', title: '닭가슴살 샐러드', tags: '#닭가슴살 #양상추 #아보카도', kcal: '320kcal' },
-    { emoji: '🍜', title: '닭가슴살 카레', tags: '#닭가슴살 #고구마 #양파', kcal: '480kcal' },
-  ];
+  const search = useCallback(async (tag: string) => {
+    if (!tag.trim()) return;
+    setLoading(true);
+    try {
+      const result = await fetchPosts({tag: tag.trim(), limit: 20});
+      setPosts(result.posts);
+    } catch {
+      Alert.alert('오류', '검색에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialTag) search(initialTag);
+  }, []);
 
   return (
     <View style={s.flex1}>
-      {/* 검색 헤더 */}
       <View style={s.searchHeader}>
         <TouchableOpacity onPress={onBack} hitSlop={8}>
           <Text style={s.backIcon}>←</Text>
@@ -238,52 +220,40 @@ function HashtagSearchScreen({
             autoFocus
             placeholderTextColor={C.sub}
             selectionColor={C.accent}
+            onSubmitEditing={() => search(searchText)}
+            returnKeyType="search"
           />
         </View>
+        <TouchableOpacity onPress={() => search(searchText)} hitSlop={8}>
+          <Text style={{color: C.accent, fontSize: 13}}>검색</Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={s.flex1}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 결과 수 */}
-        <Text style={s.resultCount}>
-          <Text style={s.resultCountAccent}>#{searchText}</Text>
-          {' '}포함 레시피{' '}
-          <Text style={s.resultCountNum}>284</Text>개
-        </Text>
+      <ScrollView style={s.flex1} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+        {searchText.trim() && (
+          <Text style={s.resultCount}>
+            <Text style={s.resultCountAccent}>#{searchText}</Text>
+            {' '}포함 게시글{' '}
+            <Text style={s.resultCountNum}>{posts.length}</Text>개
+          </Text>
+        )}
 
-        {/* 연관 재료 */}
-        <Text style={s.sectionLabel}>연관 재료</Text>
-        <View style={s.relatedTagRow}>
-          {RELATED_TAGS.map(tag => (
-            <TouchableOpacity
-              key={tag}
-              onPress={() => setSearchText(tag)}
-              style={[s.relatedTag, searchText === tag && s.relatedTagActive]}
-            >
-              <Text style={[s.relatedTagText, searchText === tag && s.relatedTagTextActive]}>
-                #{tag}
-              </Text>
+        {loading ? (
+          <ActivityIndicator color={C.accent} style={{marginTop: 40}}/>
+        ) : (
+          posts.map(post => (
+            <TouchableOpacity key={post.id} style={s.resultCard} onPress={() => onPostPress(post)} activeOpacity={0.8}>
+              <View style={s.resultThumb}>
+                <Text style={{fontSize: 20}}>🍽️</Text>
+              </View>
+              <View style={s.flex1}>
+                <Text style={s.resultTitle} numberOfLines={2}>{post.content}</Text>
+                <Text style={s.resultTags}>{post.tags.map(t => `#${t}`).join(' ')}</Text>
+                <Text style={s.resultKcal}>{post.nickname} · {timeAgo(post.created_at)}</Text>
+              </View>
             </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* 레시피 결과 */}
-        <Text style={s.sectionLabel}>레시피 결과</Text>
-        {RESULTS.map((r, i) => (
-          <View key={i} style={s.resultCard}>
-            <View style={s.resultThumb}>
-              <Text style={{ fontSize: 20 }}>{r.emoji}</Text>
-            </View>
-            <View style={s.flex1}>
-              <Text style={s.resultTitle}>{r.title}</Text>
-              <Text style={s.resultTags}>{r.tags}</Text>
-              <Text style={s.resultKcal}>{r.kcal}</Text>
-            </View>
-          </View>
-        ))}
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -297,91 +267,87 @@ function WritePostScreen({
   onPost,
 }: {
   onCancel: () => void;
-  onPost: () => void;
+  onPost: (post: Post) => void;
 }) {
-  const [title, setTitle] = useState('닭가슴살 볶음밥');
-  const [recipe, setRecipe] = useState(
-    '1. 닭가슴살을 한 입 크기로 자른다\n2. 브로콜리를 데친다\n3. 팬에 참기름을 두르고 볶는다...',
-  );
+  const [content, setContent] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const INGREDIENTS = ['닭가슴살150g', '현미밥150g', '브로콜리80g'];
+  const addTag = () => {
+    const t = tagInput.trim().replace(/^#/, '');
+    if (!t || tags.includes(t)) return;
+    setTags(prev => [...prev, t]);
+    setTagInput('');
+  };
+
+  const handlePost = async () => {
+    if (!content.trim()) {
+      Alert.alert('내용을 입력해주세요.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const post = await createPost({
+        content: content.trim(),
+        ingredient_tags: tags.length > 0 ? JSON.stringify(tags) : undefined,
+      });
+      onPost(post);
+    } catch (e: any) {
+      console.error('게시글 작성 실패:', e?.response?.data ?? e?.message ?? e);
+      Alert.alert('오류', '게시글 작성에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={s.flex1}>
-      {/* 상단 바 */}
       <View style={s.writeHeader}>
-        <TouchableOpacity onPress={onCancel} hitSlop={8}>
+        <TouchableOpacity onPress={onCancel} hitSlop={8} disabled={loading}>
           <Text style={s.cancelText}>← 취소</Text>
         </TouchableOpacity>
         <Text style={s.writeHeaderTitle}>레시피 공유</Text>
-        <TouchableOpacity onPress={onPost} hitSlop={8}>
-          <Text style={s.postBtnText}>게시</Text>
+        <TouchableOpacity onPress={handlePost} hitSlop={8} disabled={loading}>
+          {loading ? <ActivityIndicator color={C.accent} size="small"/> : <Text style={s.postBtnText}>게시</Text>}
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={s.flex1}
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* 사진 추가 */}
-        <View style={s.photoRow}>
-          <TouchableOpacity style={s.photoAdd}>
-            <Text style={{ fontSize: 20 }}>📷</Text>
-            <Text style={s.photoAddLabel}>사진 추가</Text>
-          </TouchableOpacity>
-          <View style={s.photoPreview}>
-            <Text style={{ fontSize: 26 }}>🍳</Text>
-            <TouchableOpacity style={s.photoRemove}>
-              <Text style={s.photoRemoveText}>×</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* 메뉴 이름 */}
-        <Text style={s.fieldLabel}>메뉴 이름</Text>
-        <TextInput
-          style={s.inputField}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="메뉴 이름을 입력하세요"
-          placeholderTextColor={C.sub}
-          selectionColor={C.accent}
-        />
-
-        {/* 식재료 & 용량 */}
-        <Text style={s.fieldLabel}>식재료 & 용량 (해시태그)</Text>
-        <View style={s.ingredientBox}>
-          {INGREDIENTS.map(ing => (
-            <View key={ing} style={s.ingredientTag}>
-              <Text style={s.ingredientTagText}>#{ing}</Text>
-            </View>
-          ))}
-          <TouchableOpacity style={s.addIngredientTag}>
-            <Text style={s.addIngredientText}>+ 재료 추가</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 레시피 */}
-        <Text style={s.fieldLabel}>레시피 순서</Text>
+      <ScrollView style={s.flex1} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <Text style={s.fieldLabel}>내용</Text>
         <TextInput
           style={s.recipeInput}
-          value={recipe}
-          onChangeText={setRecipe}
-          placeholder="레시피 순서를 입력하세요"
+          value={content}
+          onChangeText={setContent}
+          placeholder="레시피나 식단을 공유해보세요"
           placeholderTextColor={C.sub}
           multiline
           textAlignVertical="top"
           selectionColor={C.accent}
         />
 
-        {/* AI 자동 불러오기 */}
-        <TouchableOpacity style={s.aiImportBtn} activeOpacity={0.7}>
-          <Text>✨</Text>
-          <Text style={s.aiImportText}>오늘 점심 레시피 자동 불러오기</Text>
-          <Text style={s.aiImportAction}>불러오기</Text>
-        </TouchableOpacity>
+        <Text style={s.fieldLabel}>식재료 태그</Text>
+        <View style={s.ingredientBox}>
+          {tags.map(tag => (
+            <TouchableOpacity key={tag} style={s.ingredientTag} onPress={() => setTags(prev => prev.filter(t => t !== tag))}>
+              <Text style={s.ingredientTagText}>#{tag} ×</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+            <TextInput
+              style={[s.hashInput, {flex: 1, minWidth: 80, color: C.text}]}
+              value={tagInput}
+              onChangeText={setTagInput}
+              placeholder="재료 입력"
+              placeholderTextColor={C.sub}
+              onSubmitEditing={addTag}
+              returnKeyType="done"
+            />
+            <TouchableOpacity style={s.addIngredientTag} onPress={addTag}>
+              <Text style={s.addIngredientText}>+ 추가</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -391,118 +357,96 @@ function WritePostScreen({
 // 4. 게시글 상세 화면
 // ═══════════════════════════════════════════════════════════════════════════════
 function PostDetailScreen({
-  post,
+  post: initialPost,
   onBack,
 }: {
   post: Post;
   onBack: () => void;
 }) {
-  const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const currentUser = useAuthStore(s => s.user);
+  const [post, setPost] = useState(initialPost);
 
-  const NUTRITION = [
-    { val: '520', unit: 'kcal', color: C.text },
-    { val: '68g', unit: '탄수', color: C.accent3 },
-    { val: '42g', unit: '단백', color: C.teal },
-    { val: '12g', unit: '지방', color: C.amber },
-  ];
+  const handleLike = async () => {
+    try {
+      const result = await toggleLike(post.id);
+      setPost(prev => ({...prev, is_liked: result.liked, like_count: result.like_count}));
+    } catch {}
+  };
 
-  const INGREDIENTS_DETAIL = ['닭가슴살 150g', '현미밥 150g', '브로콜리 80g', '달걀 1개'];
+  const handleBookmark = async () => {
+    try {
+      const result = await toggleBookmark(post.id);
+      setPost(prev => ({...prev, is_bookmarked: result.bookmarked}));
+    } catch {}
+  };
+
+  const handleDelete = () => {
+    Alert.alert('게시글 삭제', '삭제하면 복구할 수 없어요.', [
+      {text: '취소', style: 'cancel'},
+      {text: '삭제', style: 'destructive', onPress: async () => {
+        try {
+          await deletePost(post.id);
+          onBack();
+        } catch {
+          Alert.alert('오류', '삭제에 실패했습니다.');
+        }
+      }},
+    ]);
+  };
 
   return (
     <View style={s.flex1}>
-      {/* 상단 바 */}
       <View style={s.detailHeader}>
         <TouchableOpacity onPress={onBack} hitSlop={8}>
           <Text style={s.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={s.detailHeaderTitle}>레시피</Text>
-        <Text style={s.headerIcon}>⋯</Text>
+        <Text style={s.detailHeaderTitle}>게시글</Text>
+        {currentUser?.id === post.author_id ? (
+          <TouchableOpacity onPress={handleDelete} hitSlop={8}>
+            <Text style={{color: C.accent2, fontSize: 13}}>삭제</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={s.headerIcon}> </Text>
+        )}
       </View>
 
       <ScrollView style={s.flex1} showsVerticalScrollIndicator={false}>
-        {/* 커버 이미지 */}
         <View style={s.coverImage}>
-          <Text style={s.coverEmoji}>{post.emoji}</Text>
+          <Text style={s.coverEmoji}>🍽️</Text>
         </View>
 
         <View style={s.detailBody}>
-          {/* 작성자 + TOP 배지 */}
           <View style={s.detailMeta}>
             <View style={s.detailAvatar}>
-              <Text style={s.authorInitial}>{post.authorInitial}</Text>
+              <Text style={s.authorInitial}>{post.nickname?.[0] ?? '?'}</Text>
             </View>
-            <Text style={s.detailAuthorText}>
-              {post.author} · {post.timeAgo}
-            </Text>
-            <View style={s.topBadge}>
-              <Text style={s.topBadgeText}>🥇 TOP1</Text>
-            </View>
+            <Text style={s.detailAuthorText}>{post.nickname} · {timeAgo(post.created_at)}</Text>
           </View>
 
-          {/* 제목 */}
-          <Text style={s.detailTitle}>{post.title}</Text>
+          <Text style={s.detailTitle}>{post.content}</Text>
 
-          {/* 반응 바 */}
           <View style={s.reactionBar}>
-            <TouchableOpacity
-              style={s.reactionBtn}
-              onPress={() => setLiked(!liked)}
-            >
-              <Text style={{ fontSize: 17 }}>{liked ? '❤️' : '🤍'}</Text>
-              <Text style={[s.reactionCount, liked && { color: C.accent2 }]}>
-                {post.likes + (liked ? 1 : 0)}
-              </Text>
+            <TouchableOpacity style={s.reactionBtn} onPress={handleLike}>
+              <Text style={{fontSize: 17}}>{post.is_liked ? '❤️' : '🤍'}</Text>
+              <Text style={[s.reactionCount, post.is_liked && {color: C.accent2}]}>{post.like_count}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={s.reactionBtn}
-              onPress={() => setSaved(!saved)}
-            >
-              <Text style={{ fontSize: 17 }}>{saved ? '🔖' : '💾'}</Text>
-              <Text style={s.reactionCount}>{post.saves + (saved ? 1 : 0)}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.reactionBtn}>
-              <Text style={{ fontSize: 17 }}>💬</Text>
-              <Text style={s.reactionCount}>{post.comments}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.shareBtn}>
-              <Text style={{ fontSize: 17 }}>↗️</Text>
+            <TouchableOpacity style={s.reactionBtn} onPress={handleBookmark}>
+              <Text style={{fontSize: 17}}>{post.is_bookmarked ? '🔖' : '💾'}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 식재료 & 용량 */}
-          <Text style={s.sectionLabel}>식재료 & 용량</Text>
-          <View style={s.tagRow}>
-            {INGREDIENTS_DETAIL.map(ing => (
-              <View key={ing} style={s.ingredientTagBlue}>
-                <Text style={s.ingredientTagBlueText}>#{ing}</Text>
+          {post.tags.length > 0 && (
+            <>
+              <Text style={s.sectionLabel}>태그</Text>
+              <View style={s.tagRow}>
+                {post.tags.map(tag => (
+                  <View key={tag} style={s.ingredientTagBlue}>
+                    <Text style={s.ingredientTagBlueText}>#{tag}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-
-          {/* AI 영양 정보 */}
-          <View style={s.nutritionCard}>
-            <Text style={s.nutritionTitle}>✨ AI 분석 영양 정보</Text>
-            <View style={s.nutritionRow}>
-              {NUTRITION.map(n => (
-                <View key={n.unit} style={s.nutritionItem}>
-                  <Text style={[s.nutritionVal, { color: n.color }]}>{n.val}</Text>
-                  <Text style={s.nutritionUnit}>{n.unit}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* 레시피 순서 */}
-          <Text style={s.sectionLabel}>레시피 순서</Text>
-          {RECIPE_STEPS.map((step, i) => (
-            <View key={i} style={s.recipeStep}>
-              <View style={s.stepNumber}>
-                <Text style={s.stepNumberText}>{i + 1}</Text>
-              </View>
-              <Text style={s.stepText}>{step}</Text>
-            </View>
-          ))}
+            </>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -546,9 +490,8 @@ export function CommunityScreen() {
     return () => sub.remove();
   }, [screen]);
 
-  const handlePost = () => {
-    // 게시 완료 → 게시글 상세로 이동
-    setSelectedPost(MOCK_POSTS[0]);
+  const handlePost = (post: Post) => {
+    setSelectedPost(post);
     setScreen('postDetail');
   };
 
@@ -565,6 +508,7 @@ export function CommunityScreen() {
         <HashtagSearchScreen
           initialTag={selectedHashtag}
           onBack={handleBack}
+          onPostPress={handlePostPress}
         />
       )}
       {screen === 'writePost' && (
@@ -1199,5 +1143,14 @@ const s = StyleSheet.create({
     color: C.sub,
     lineHeight: 20,
     flex: 1,
+  },
+  loadMoreBtn: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  loadMoreText: {
+    fontSize: 13,
+    color: C.accent,
   },
 });
