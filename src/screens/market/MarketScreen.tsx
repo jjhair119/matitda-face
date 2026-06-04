@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect, useRef} from 'react';
 import {
     View,
     Text,
@@ -7,12 +7,15 @@ import {
     TouchableOpacity,
     TextInput,
     FlatList,
-    Alert,
+    Modal,
+    ActivityIndicator,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import MapView, {Marker, PROVIDER_DEFAULT} from 'react-native-maps';
+import * as Location from 'expo-location';
 import {MarketStackParamList} from '../../navigation/MarketStackNavigator';
-import {STORES, PRODUCTS, CATEGORIES, CategoryKey, AI_RECOMMENDATION} from '../../data/marketData';
+import {STORES, PRODUCTS, CATEGORIES, CategoryKey} from '../../data/marketData';
 import {useCartStore} from '../../store/cartStore';
 import {colors} from '../../theme';
 
@@ -21,43 +24,38 @@ type Props = NativeStackScreenProps<MarketStackParamList, 'MarketMain'>;
 export function MarketScreen({navigation}: Props) {
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState<CategoryKey>('all');
+    const [mapVisible, setMapVisible] = useState(false);
+    const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
+    const [locationLabel, setLocationLabel] = useState<string>('위치 확인 중...');
     const cartCount = useCartStore((s) => s.totalCount());
-    const storeId = useCartStore((s) => s.storeId);
-    const setStore = useCartStore((s) => s.setStore);
-    const addItem = useCartStore((s) => s.addItem);
-    const clearCart = useCartStore((s) => s.clearCart);
+
+    useEffect(() => {
+        (async () => {
+            const {status} = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setLocationLabel('위치 권한 없음');
+                return;
+            }
+            try {
+                const pos = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Balanced});
+                const coords = {latitude: pos.coords.latitude, longitude: pos.coords.longitude};
+                setLocation(coords);
+                const [geo] = await Location.reverseGeocodeAsync(coords);
+                if (geo) {
+                    const parts = [geo.city ?? geo.region, geo.district ?? geo.subregion].filter(Boolean);
+                    setLocationLabel(parts.join(' ') || '현재 위치');
+                }
+            } catch {
+                setLocationLabel('위치 불러오기 실패');
+            }
+        })();
+    }, []);
 
     const searchResults = useMemo(() => {
         if (!search.trim()) return [];
         const q = search.trim().toLowerCase();
         return PRODUCTS.filter((p) => p.name.toLowerCase().includes(q));
     }, [search]);
-
-    const aiProductIds = AI_RECOMMENDATION.productIds;
-    const aiProducts = PRODUCTS.filter((p) => aiProductIds.includes(p.id));
-
-    const handleAddAiBundle = () => {
-        if (storeId && storeId !== AI_RECOMMENDATION.storeId) {
-            Alert.alert(
-                '장바구니 초기화',
-                '다른 매장 상품이 담겨 있습니다.\n초기화 후 추가할까요?',
-                [
-                    {text: '취소', style: 'cancel'},
-                    {
-                        text: '초기화 후 추가',
-                        onPress: () => {
-                            clearCart();
-                            setStore(AI_RECOMMENDATION.storeId);
-                            aiProducts.forEach((p) => addItem(p));
-                        },
-                    },
-                ],
-            );
-            return;
-        }
-        if (!storeId) setStore(AI_RECOMMENDATION.storeId);
-        aiProducts.forEach((p) => addItem(p));
-    };
 
     const handleStorePress = (sid: string) => {
         navigation.navigate('StoreDetail', {storeId: sid});
@@ -67,13 +65,43 @@ export function MarketScreen({navigation}: Props) {
 
     return (
         <SafeAreaView style={s.container} edges={['top']}>
+            {/* 지도 모달 */}
+            <Modal visible={mapVisible} animationType="slide" onRequestClose={() => setMapVisible(false)}>
+                <View style={s.mapModal}>
+                    <View style={s.mapModalHeader}>
+                        <Text style={s.mapModalTitle}>내 위치</Text>
+                        <TouchableOpacity onPress={() => setMapVisible(false)} style={s.mapCloseBtn}>
+                            <Text style={s.mapCloseText}>닫기</Text>
+                        </TouchableOpacity>
+                    </View>
+                    {location ? (
+                        <MapView
+                            style={s.map}
+                            provider={PROVIDER_DEFAULT}
+                            initialRegion={{
+                                ...location,
+                                latitudeDelta: 0.01,
+                                longitudeDelta: 0.01,
+                            }}
+                        >
+                            <Marker coordinate={location} title="현재 위치" />
+                        </MapView>
+                    ) : (
+                        <View style={s.mapLoading}>
+                            <ActivityIndicator color={colors.accent} />
+                            <Text style={s.mapLoadingText}>위치를 불러오는 중...</Text>
+                        </View>
+                    )}
+                </View>
+            </Modal>
+
             {/* 헤더 */}
             <View style={s.header}>
                 <View>
                     <Text style={s.headerTitle}>식재료 구매</Text>
-                    <Text style={s.headerSub}>📍 서울 마포구 · 배달 가능</Text>
+                    <Text style={s.headerSub}>📍 {locationLabel} · 배달 가능</Text>
                 </View>
-                <TouchableOpacity style={s.mapBtn}>
+                <TouchableOpacity style={s.mapBtn} onPress={() => setMapVisible(true)}>
                     <Text style={s.mapIcon}>🗺️</Text>
                 </TouchableOpacity>
             </View>
@@ -167,23 +195,6 @@ export function MarketScreen({navigation}: Props) {
                     </ScrollView>
 
                     <View style={s.body}>
-                        {/* AI 추천 카드 */}
-                        <View style={s.aiCard}>
-                            <Text style={s.aiTitle}>✨ 오늘 저녁 식단 재료 추천</Text>
-                            <Text style={s.aiMeal}>{AI_RECOMMENDATION.meal}</Text>
-                            <View style={s.aiItems}>
-                                {aiProducts.map((p) => (
-                                    <View key={p.id} style={s.aiItem}>
-                                        <Text style={s.aiItemEmoji}>{p.emoji}</Text>
-                                        <Text style={s.aiItemName}>{p.name} {p.unit}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                            <TouchableOpacity style={s.aiBtn} onPress={handleAddAiBundle}>
-                                <Text style={s.aiBtnText}>장바구니에 한번에 담기 →</Text>
-                            </TouchableOpacity>
-                        </View>
-
                         {/* 매장 목록 */}
                         <Text style={s.sectionLabel}>주변 배달 가능 매장</Text>
                         {STORES.map((store) => (
@@ -342,32 +353,23 @@ const s = StyleSheet.create({
 
     body: {paddingHorizontal: 16},
 
-    aiCard: {
-        backgroundColor: 'rgba(78,201,255,0.06)',
-        borderWidth: 1,
-        borderColor: 'rgba(78,201,255,0.2)',
-        borderRadius: 12,
-        padding: 14,
-        marginBottom: 16,
-    },
-    aiTitle: {fontSize: 12, color: colors.accent3, fontWeight: '600', marginBottom: 2},
-    aiMeal: {fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 10},
-    aiItems: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12},
-    aiItem: {
+    mapModal: {flex: 1, backgroundColor: colors.bg},
+    mapModalHeader: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 4,
-        backgroundColor: colors.surface2,
-        borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 5,
-        borderWidth: 1,
-        borderColor: colors.border,
+        paddingHorizontal: 16,
+        paddingTop: 56,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
     },
-    aiItemEmoji: {fontSize: 13},
-    aiItemName: {fontSize: 11, color: colors.text},
-    aiBtn: {alignSelf: 'flex-start'},
-    aiBtnText: {fontSize: 12, color: colors.accent, fontWeight: '600'},
+    mapModalTitle: {fontSize: 16, fontWeight: '700', color: colors.text},
+    mapCloseBtn: {padding: 4},
+    mapCloseText: {fontSize: 14, color: colors.accent},
+    map: {flex: 1},
+    mapLoading: {flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12},
+    mapLoadingText: {fontSize: 13, color: colors.sub},
 
     sectionLabel: {
         fontSize: 10,
