@@ -7,6 +7,7 @@ import {OnboardingStackParamList} from '../../navigation/OnboardingNavigator';
 import {useAuthStore} from '../../store/authStore';
 import {loginWithDevToken} from '../../api/auth';
 import {saveToken} from '../../api/client';
+import {getMyInfo} from '../../api/onboarding';
 import {colors} from '../../theme';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -33,20 +34,23 @@ export function SocialLoginScreen({navigation}: Props) {
                 return;
             }
 
-            // 서버가 리다이렉트한 URL: http://localhost:3000/auth/success?token=JWT&isNewUser=true
-            const url = new URL(result.url);
-            const token = url.searchParams.get('token');
-            const isNewUser = url.searchParams.get('isNewUser') === 'true';
+            const query = result.url.split('?')[1] ?? '';
+            const params = Object.fromEntries(query.split('&').map(p => p.split('=')));
+            const token = params['token'];
+            const isNewUser = params['isNewUser'] === 'true';
 
             if (!token) throw new Error('토큰 없음');
 
             await saveToken(token);
             setLoggedIn(true);
 
-            if (isNewUser) {
-                navigation.navigate('BasicInfo');
-            } else {
+            const userInfo = await getMyInfo();
+            const onboardingDone = userInfo.nickname && userInfo.age && userInfo.height_cm && userInfo.weight_kg;
+
+            if (onboardingDone) {
                 setOnboarded(true);
+            } else {
+                navigation.navigate('BasicInfo');
             }
         } catch (e) {
             Alert.alert('카카오 로그인 실패', '잠시 후 다시 시도해주세요.');

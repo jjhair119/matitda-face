@@ -101,10 +101,17 @@ export function PreferenceScreen({}: Props) {
                 diet_style: dietStyleMap[finalDraft.dietStyle ?? 'normal'],
             });
 
+            const categoryMap: Record<string, 'carb' | 'protein' | 'fat'> = {};
+            (['carb', 'protein', 'fat'] as const).forEach((cat) => {
+                [...PRESET[cat], ...{carb, protein, fat}[cat].custom].forEach((item) => {
+                    categoryMap[item] = cat;
+                });
+            });
+
             await savePreferences(
                 allSelected.map((name) => ({
                     ingredient_name: name.replace(/^[\p{Emoji}\s]+/u, '').trim(),
-                    category: 'general',
+                    category: categoryMap[name] ?? 'carb',
                     preference: 'like' as const,
                 })),
             );
