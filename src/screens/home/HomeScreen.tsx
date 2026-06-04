@@ -134,12 +134,85 @@ export function HomeScreen({navigation}: Props) {
                         )}
                     </View>
                 ))}
+                {/* 레시피북 */}
+                <TouchableOpacity
+                    style={s.recipeBookCard}
+                    onPress={() => navigation.navigate('RecipeBook')}
+                >
+                    <View style={s.recipeBookLeft}>
+                        <Text style={s.recipeBookIcon}>📸</Text>
+
+                        <View>
+                            <Text style={s.recipeBookTitle}>
+                                레시피북 보기
+                            </Text>
+
+                            <Text style={s.recipeBookDesc}>
+                                저장한 레시피 · 이전 식단 · AI 생성 레시피
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={s.recipeBookArrow}>
+                        <Text style={{color: colors.text}}>›</Text>
+                    </View>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );
 }
 
 const s = StyleSheet.create({
+        recipeBookCard: {
+        marginTop: 10,
+        marginBottom: 12,
+
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+
+        backgroundColor: colors.surface2,
+
+        borderWidth: 1,
+        borderColor: 'rgba(184,255,78,0.35)',
+
+        borderRadius: 16,
+
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+    },
+
+    recipeBookLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+
+    recipeBookIcon: {
+        fontSize: 22,
+        marginRight: 14,
+    },
+
+    recipeBookTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+    },
+
+    recipeBookDesc: {
+        marginTop: 2,
+        fontSize: 11,
+        color: colors.sub,
+    },
+
+    recipeBookArrow: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: colors.surface,
+
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     container: {flex: 1, backgroundColor: colors.bg},
     scroll: {flex: 1, paddingHorizontal: 16},
     header: {
