@@ -34,7 +34,7 @@ export async function createPost(params: {content: string; ingredient_tags?: str
         form.append('images', img as any);
     });
     const {data} = await api.post('/posts', form, {
-        transformRequest: (d) => d,
+        headers: {'Content-Type': 'multipart/form-data'},
     });
     return data.post;
 }

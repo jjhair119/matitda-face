@@ -103,7 +103,8 @@ function FeedScreen({
           <Text style={s.searchPlaceholder}>#재료명으로 레시피 검색 (예: #닭가슴살)</Text>
         </TouchableOpacity>
 
-        <View style={s.tabBar}>
+        {/* 팔로잉/최신 탭은 API 미구현으로 비활성화 */}
+        {/* <View style={s.tabBar}>
           {(['추천', '팔로잉', '최신'] as const).map(tab => (
             <TouchableOpacity
               key={tab}
@@ -113,7 +114,7 @@ function FeedScreen({
               <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>{tab}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </View> */}
 
         {loading ? (
           <ActivityIndicator color={C.accent} style={{marginTop: 40}}/>
@@ -295,7 +296,8 @@ function WritePostScreen({
       onPost(post);
     } catch (e: any) {
       console.error('게시글 작성 실패:', e?.response?.data ?? e?.message ?? e);
-      Alert.alert('오류', '게시글 작성에 실패했습니다.');
+      const msg = e?.response?.data?.message ?? e?.message ?? '게시글 작성에 실패했습니다.';
+      Alert.alert('오류', msg);
     } finally {
       setLoading(false);
     }
