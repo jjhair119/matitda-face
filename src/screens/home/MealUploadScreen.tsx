@@ -7,6 +7,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    ScrollView,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
@@ -18,7 +19,7 @@ import {colors} from '../../theme';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'MealUpload'>;
 
-type Phase = 'info' | 'camera' | 'analyzing' | 'result';
+type Phase = 'info' | 'camera_empty' | 'camera_food' | 'analyzing' | 'result';
 
 function MacroItem({label, value, unit, color}: {label: string; value: number; unit: string; color: string}) {
     return (
@@ -30,6 +31,11 @@ function MacroItem({label, value, unit, color}: {label: string; value: number; u
     );
 }
 
+function getTodayDate(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function MealUploadScreen({navigation, route}: Props) {
     const {mealId} = route.params;
     const meals = useMealStore((s) => s.meals);
@@ -37,11 +43,13 @@ export function MealUploadScreen({navigation, route}: Props) {
     const meal = meals.find((m) => m.id === mealId)!;
 
     const [phase, setPhase] = useState<Phase>('info');
-    const [photoUri, setPhotoUri] = useState<string | null>(null);
+    const [emptyPhotoUri, setEmptyPhotoUri] = useState<string | null>(null);
+    const [foodPhotoUri, setFoodPhotoUri] = useState<string | null>(null);
     const [result, setResult] = useState<{
         actualKcal: number;
         macros: {carb: number; protein: number; fat: number};
         score: number;
+        foods: string[];
         feedback: string;
     } | null>(null);
 
@@ -56,22 +64,41 @@ export function MealUploadScreen({navigation, route}: Props) {
                 return;
             }
         }
-        setPhase('camera');
+        setPhase('camera_empty');
     };
 
-    const handleCapture = async () => {
+    const handleCaptureEmpty = async () => {
         if (!cameraRef.current) return;
         try {
             const photo = await cameraRef.current.takePictureAsync({quality: 0.8});
             if (!photo) return;
-            setPhotoUri(photo.uri);
-            setPhase('analyzing');
-            const analysis = await analyzeMealPhoto(meal.expectedKcal);
-            setResult(analysis);
-            setPhase('result');
+            setEmptyPhotoUri(photo.uri);
+            setPhase('camera_food');
         } catch {
             Alert.alert('촬영 실패', '다시 시도해주세요.');
-            setPhase('camera');
+        }
+    };
+
+    const handleCaptureFood = async () => {
+        if (!cameraRef.current || !emptyPhotoUri) return;
+        try {
+            const photo = await cameraRef.current.takePictureAsync({quality: 0.8});
+            if (!photo) return;
+            setFoodPhotoUri(photo.uri);
+            setPhase('analyzing');
+
+            const analysis = await analyzeMealPhoto({
+                emptyPhotoUri,
+                foodPhotoUri: photo.uri,
+                mealType: mealId,
+                mealDate: getTodayDate(),
+            });
+
+            setResult(analysis);
+            setPhase('result');
+        } catch (e: any) {
+            Alert.alert('분석 실패', e?.response?.data?.message ?? '다시 시도해주세요.');
+            setPhase('camera_food');
         }
     };
 
@@ -81,7 +108,7 @@ export function MealUploadScreen({navigation, route}: Props) {
             actualKcal: result.actualKcal,
             macros: result.macros,
             score: result.score,
-            photoUri: photoUri,
+            photoUri: foodPhotoUri,
             aiFeedback: result.feedback,
         });
         navigation.goBack();
@@ -90,7 +117,7 @@ export function MealUploadScreen({navigation, route}: Props) {
     /* ── INFO ── */
     if (phase === 'info') {
         return (
-            <SafeAreaView style={s.container}>
+            <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
                 <View style={s.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <Text style={s.backBtn}>← 뒤로</Text>
@@ -134,7 +161,18 @@ export function MealUploadScreen({navigation, route}: Props) {
                         </View>
                     </View>
 
-                    <Text style={s.hint}>식사 전후 사진을 찍으면 AI가 실제 섭취량을 분석해요</Text>
+                    <View style={s.stepGuide}>
+                        <Text style={s.stepGuideTitle}>촬영 순서</Text>
+                        <View style={s.stepRow}>
+                            <View style={s.stepBadge}><Text style={s.stepBadgeText}>1</Text></View>
+                            <Text style={s.stepText}>빈 그릇을 먼저 촬영해요</Text>
+                        </View>
+                        <View style={s.stepRow}>
+                            <View style={s.stepBadge}><Text style={s.stepBadgeText}>2</Text></View>
+                            <Text style={s.stepText}>음식이 담긴 그릇을 촬영해요</Text>
+                        </View>
+                        <Text style={s.stepHint}>AI가 두 사진을 비교해 실제 섭취량을 계산해요</Text>
+                    </View>
                 </View>
 
                 <View style={s.footer}>
@@ -146,31 +184,66 @@ export function MealUploadScreen({navigation, route}: Props) {
         );
     }
 
-    /* ── CAMERA ── */
-    if (phase === 'camera') {
+    /* ── CAMERA EMPTY ── */
+    if (phase === 'camera_empty') {
         return (
             <View style={{flex: 1, backgroundColor: '#000'}}>
                 <CameraView ref={cameraRef} style={{flex: 1}} facing="back">
-                    {/* 상단 가이드 */}
                     <SafeAreaView style={s.cameraOverlay}>
                         <TouchableOpacity style={s.cameraBack} onPress={() => setPhase('info')}>
                             <Text style={s.cameraBackText}>← 취소</Text>
                         </TouchableOpacity>
-                        <View style={s.cameraGuide}>
-                            <Text style={s.cameraGuideText}>음식이 모두 나오도록 위에서 찍어주세요</Text>
+                        <View style={s.cameraStepBanner}>
+                            <Text style={s.cameraStepLabel}>STEP 1 / 2</Text>
+                            <Text style={s.cameraGuideText}>빈 그릇을 위에서 찍어주세요</Text>
                         </View>
                     </SafeAreaView>
 
-                    {/* 코너 가이드 */}
                     <View style={s.cornerTL}/>
                     <View style={s.cornerTR}/>
                     <View style={s.cornerBL}/>
                     <View style={s.cornerBR}/>
 
-                    {/* 셔터 */}
                     <View style={s.shutterArea}>
-                        <TouchableOpacity style={s.shutter} onPress={handleCapture}>
+                        <TouchableOpacity style={s.shutter} onPress={handleCaptureEmpty}>
                             <View style={s.shutterInner}/>
+                        </TouchableOpacity>
+                    </View>
+                </CameraView>
+            </View>
+        );
+    }
+
+    /* ── CAMERA FOOD ── */
+    if (phase === 'camera_food') {
+        return (
+            <View style={{flex: 1, backgroundColor: '#000'}}>
+                <CameraView ref={cameraRef} style={{flex: 1}} facing="back">
+                    <SafeAreaView style={s.cameraOverlay}>
+                        <TouchableOpacity style={s.cameraBack} onPress={() => setPhase('camera_empty')}>
+                            <Text style={s.cameraBackText}>← 다시 찍기</Text>
+                        </TouchableOpacity>
+                        <View style={[s.cameraStepBanner, {backgroundColor: 'rgba(184,255,78,0.18)'}]}>
+                            <Text style={[s.cameraStepLabel, {color: colors.accent}]}>STEP 2 / 2</Text>
+                            <Text style={s.cameraGuideText}>음식이 담긴 그릇을 찍어주세요</Text>
+                        </View>
+                    </SafeAreaView>
+
+                    {emptyPhotoUri && (
+                        <View style={s.emptyPhotoThumb}>
+                            <Image source={{uri: emptyPhotoUri}} style={s.thumbImg}/>
+                            <Text style={s.thumbLabel}>빈 그릇 ✓</Text>
+                        </View>
+                    )}
+
+                    <View style={s.cornerTL}/>
+                    <View style={s.cornerTR}/>
+                    <View style={s.cornerBL}/>
+                    <View style={s.cornerBR}/>
+
+                    <View style={s.shutterArea}>
+                        <TouchableOpacity style={[s.shutter, {borderColor: colors.accent}]} onPress={handleCaptureFood}>
+                            <View style={[s.shutterInner, {backgroundColor: colors.accent}]}/>
                         </TouchableOpacity>
                     </View>
                 </CameraView>
@@ -182,13 +255,13 @@ export function MealUploadScreen({navigation, route}: Props) {
     if (phase === 'analyzing') {
         return (
             <SafeAreaView style={[s.container, {justifyContent: 'center', alignItems: 'center'}]}>
-                {photoUri && (
-                    <Image source={{uri: photoUri}} style={s.analyzingPhoto} blurRadius={3}/>
+                {foodPhotoUri && (
+                    <Image source={{uri: foodPhotoUri}} style={s.analyzingPhoto} blurRadius={3}/>
                 )}
                 <View style={s.analyzingOverlay}>
                     <ActivityIndicator size="large" color={colors.accent}/>
                     <Text style={s.analyzingText}>AI 분석 중...</Text>
-                    <Text style={s.analyzingSubText}>칼로리와 영양소를 계산하고 있어요</Text>
+                    <Text style={s.analyzingSubText}>두 사진을 비교해 섭취량을 계산하고 있어요</Text>
                 </View>
             </SafeAreaView>
         );
@@ -196,18 +269,17 @@ export function MealUploadScreen({navigation, route}: Props) {
 
     /* ── RESULT ── */
     return (
-        <SafeAreaView style={s.container}>
+        <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
             <View style={s.header}>
                 <View style={{width: 50}}/>
                 <Text style={s.headerTitle}>분석 결과</Text>
                 <View style={{width: 50}}/>
             </View>
 
-            <View style={s.body}>
-                {/* 점수 */}
+            <ScrollView style={s.body} contentContainerStyle={{gap: 10, paddingBottom: 16}} showsVerticalScrollIndicator={false}>
                 <View style={s.scoreSection}>
-                    {photoUri && (
-                        <Image source={{uri: photoUri}} style={s.resultPhoto}/>
+                    {foodPhotoUri && (
+                        <Image source={{uri: foodPhotoUri}} style={s.resultPhoto}/>
                     )}
                     <View style={s.scoreRing}>
                         <Text style={s.scoreNum}>{result?.score}</Text>
@@ -219,7 +291,13 @@ export function MealUploadScreen({navigation, route}: Props) {
                     <Text style={s.scoreSub}>목표 대비 {Math.round(((result?.actualKcal ?? 0) / meal.expectedKcal) * 100)}% 달성</Text>
                 </View>
 
-                {/* 실제 칼로리 + 영양소 */}
+                {result?.foods && result.foods.length > 0 && (
+                    <View style={s.card}>
+                        <Text style={s.cardLabel}>인식된 음식</Text>
+                        <Text style={s.cardText}>{result.foods.join(' · ')}</Text>
+                    </View>
+                )}
+
                 <View style={s.card}>
                     <View style={s.resultKcalRow}>
                         <Text style={s.cardLabel}>실제 섭취</Text>
@@ -235,12 +313,11 @@ export function MealUploadScreen({navigation, route}: Props) {
                     </View>
                 </View>
 
-                {/* AI 피드백 */}
                 <View style={s.feedbackCard}>
                     <Text style={s.feedbackLabel}>✨ AI 피드백</Text>
                     <Text style={s.feedbackText}>{result?.feedback}</Text>
                 </View>
-            </View>
+            </ScrollView>
 
             <View style={s.footer}>
                 <TouchableOpacity style={s.primaryBtn} onPress={handleUpload}>
@@ -300,19 +377,42 @@ const s = StyleSheet.create({
     cardLabel: {fontSize: 10, color: colors.sub, textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: '500'},
     cardText: {fontSize: 13, color: colors.text, lineHeight: 20},
     macroRow: {flexDirection: 'row', justifyContent: 'space-around'},
-    hint: {fontSize: 12, color: colors.sub, textAlign: 'center', lineHeight: 18},
+
+    stepGuide: {
+        backgroundColor: colors.surface2,
+        borderRadius: 12,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 8,
+    },
+    stepGuideTitle: {fontSize: 10, color: colors.sub, textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: '500'},
+    stepRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+    stepBadge: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: colors.accent,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    stepBadgeText: {fontSize: 11, fontWeight: '700', color: colors.bg},
+    stepText: {fontSize: 13, color: colors.text},
+    stepHint: {fontSize: 11, color: colors.sub, marginTop: 2},
 
     /* camera */
     cameraOverlay: {flex: 1},
     cameraBack: {margin: 16},
     cameraBackText: {color: 'white', fontSize: 14, fontWeight: '500'},
-    cameraGuide: {
+    cameraStepBanner: {
         marginHorizontal: 16,
         backgroundColor: 'rgba(0,0,0,0.55)',
         borderRadius: 10,
         padding: 10,
         alignItems: 'center',
+        gap: 2,
     },
+    cameraStepLabel: {color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600', letterSpacing: 1},
     cameraGuideText: {color: 'white', fontSize: 13},
     shutterArea: {position: 'absolute', bottom: 48, left: 0, right: 0, alignItems: 'center'},
     shutter: {
@@ -325,6 +425,16 @@ const s = StyleSheet.create({
         justifyContent: 'center',
     },
     shutterInner: {width: 52, height: 52, borderRadius: 26, backgroundColor: 'white'},
+
+    emptyPhotoThumb: {
+        position: 'absolute',
+        bottom: 58,
+        right: 24,
+        alignItems: 'center',
+        gap: 4,
+    },
+    thumbImg: {width: 56, height: 56, borderRadius: 8, borderWidth: 2, borderColor: colors.accent},
+    thumbLabel: {color: colors.accent, fontSize: 10, fontWeight: '600'},
 
     /* corner guides */
     cornerTL: {position: 'absolute', top: '28%', left: '10%', width: CORNER_SIZE, height: CORNER_SIZE, borderTopWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK, borderColor: colors.accent},

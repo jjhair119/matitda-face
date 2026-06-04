@@ -1,5 +1,9 @@
 import { registerRootComponent } from 'expo';
 
+if (__DEV__) {
+    require('./src/config/reactotron');
+}
+
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity} from 'react-native';
+import {getDailyMeals, DailyMealSummary} from '../../api/meals';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useAuthStore} from '../../store/authStore';
@@ -9,6 +10,11 @@ import {HomeStackParamList} from '../../navigation/HomeStackNavigator';
 import {colors} from '../../theme';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
+
+function getTodayDate() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function MacroBar({label, value, total, color}: {label: string; value: number; total: number; color: string}) {
     const pct = Math.min(1, value / total);
@@ -39,20 +45,32 @@ export function HomeScreen({navigation}: Props) {
     const tdee = user?.tdee ?? 1820;
     const nickname = user?.nickname ?? '사용자';
 
-    const totalConsumed = meals.reduce((sum, m) => sum + (m.actualKcal ?? 0), 0);
+    const [serverSummary, setServerSummary] = useState<DailyMealSummary | null>(null);
+
+    useEffect(() => {
+        const today = getTodayDate();
+        getDailyMeals(today)
+            .then(setServerSummary)
+            .catch(() => {}); // 실패 시 로컬 데이터 사용
+    }, []);
+
+    const totalConsumed = serverSummary?.totals.calories
+        ?? meals.reduce((sum, m) => sum + (m.actualKcal ?? 0), 0);
     const caloriePct = Math.min(1, totalConsumed / tdee);
 
     const today = new Date();
     const dateLabel = `${today.getMonth() + 1}월 ${today.getDate()}일`;
 
-    const totalMacros = meals.reduce(
-        (acc, m) => ({
-            carb: acc.carb + (m.macros?.carb ?? 0),
-            protein: acc.protein + (m.macros?.protein ?? 0),
-            fat: acc.fat + (m.macros?.fat ?? 0),
-        }),
-        {carb: 0, protein: 0, fat: 0},
-    );
+    const totalMacros = serverSummary
+        ? {carb: Math.round(serverSummary.totals.carbs_g), protein: Math.round(serverSummary.totals.protein_g), fat: Math.round(serverSummary.totals.fat_g)}
+        : meals.reduce(
+            (acc, m) => ({
+                carb: acc.carb + (m.macros?.carb ?? 0),
+                protein: acc.protein + (m.macros?.protein ?? 0),
+                fat: acc.fat + (m.macros?.fat ?? 0),
+            }),
+            {carb: 0, protein: 0, fat: 0},
+        );
     const targetMacros = {
         carb: Math.round((tdee * 0.45) / 4),
         protein: Math.round((tdee * 0.3) / 4),
@@ -120,9 +138,17 @@ export function HomeScreen({navigation}: Props) {
                             <Text style={s.mealIngredients} numberOfLines={1}>{meal.ingredients}</Text>
                         </View>
                         {meal.score !== null ? (
-                            <View style={s.scoreBox}>
-                                <Text style={s.scoreNum}>{meal.score}</Text>
-                                <Text style={s.scoreUnit}>점</Text>
+                            <View style={s.doneBox}>
+                                <View style={s.scoreBox}>
+                                    <Text style={s.scoreNum}>{meal.score}</Text>
+                                    <Text style={s.scoreUnit}>점</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={s.retakeBtn}
+                                    onPress={() => navigation.navigate('MealUpload', {mealId: meal.id})}
+                                >
+                                    <Text style={s.retakeBtnText}>재촬영</Text>
+                                </TouchableOpacity>
                             </View>
                         ) : (
                             <TouchableOpacity
@@ -331,9 +357,18 @@ const s = StyleSheet.create({
     mealMid: {flex: 1},
     mealMeta: {fontSize: 11, color: colors.sub, marginBottom: 2},
     mealIngredients: {fontSize: 13, fontWeight: '500', color: colors.text},
+    doneBox: {alignItems: 'center', gap: 4},
     scoreBox: {alignItems: 'center', minWidth: 36},
     scoreNum: {fontSize: 18, fontWeight: '700', color: colors.accent},
     scoreUnit: {fontSize: 9, color: colors.sub},
+    retakeBtn: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    retakeBtnText: {fontSize: 10, color: colors.sub},
     recordBtn: {
         paddingHorizontal: 10,
         paddingVertical: 5,

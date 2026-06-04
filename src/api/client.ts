@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Reactotron from '../config/reactotron';
 
 const TOKEN_KEY = '@matitda_token';
 
@@ -29,3 +30,36 @@ api.interceptors.response.use(
         return Promise.reject(error);
     },
 );
+
+// Reactotron network logging (dev only)
+if (__DEV__) {
+    api.interceptors.request.use((config) => {
+        Reactotron.display?.({
+            name: `→ ${config.method?.toUpperCase()} ${config.url}`,
+            value: {headers: config.headers, data: config.data},
+            preview: `${config.method?.toUpperCase()} ${config.url}`,
+        });
+        return config;
+    });
+
+    api.interceptors.response.use(
+        (res) => {
+            Reactotron.display?.({
+                name: `← ${res.status} ${res.config.url}`,
+                value: res.data,
+                preview: `${res.status} ${res.config.url}`,
+                important: false,
+            });
+            return res;
+        },
+        (error) => {
+            Reactotron.display?.({
+                name: `✗ ${error.response?.status ?? 'ERR'} ${error.config?.url}`,
+                value: error.response?.data ?? error.message,
+                preview: `${error.response?.status ?? 'ERR'} ${error.config?.url}`,
+                important: true,
+            });
+            return Promise.reject(error);
+        },
+    );
+}
