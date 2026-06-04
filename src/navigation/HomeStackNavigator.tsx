@@ -22,6 +22,7 @@ export type HomeStackParamList = {
 
     RecipeDetail: {
         recipeId: string;
+        fromType?: 'saved' | 'history' | 'ai';
     };
 
     AIRecipeGenerate: undefined;

@@ -65,6 +65,7 @@ export function RecipeListScreen({navigation, route}: Props) {
                         onPress={() =>
                             navigation.navigate('RecipeDetail', {
                                 recipeId: recipe.id,
+                                fromType: type,
                             })
                         }>
                         <Text style={s.emoji}>{recipe.emoji}</Text>
