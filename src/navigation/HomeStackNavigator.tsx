@@ -6,11 +6,12 @@ import {NotificationScreen} from '../screens/home/NotificationScreen';
 import {MealId} from '../store/mealStore';
 import {RecipeBookScreen} from '../screens/home/RecipeBookScreen';
 import {RecipeListScreen} from '../screens/home/RecipeListScreen';
-import { RecipeDetailScreen } from 'src/screens/home/RecipeDetailScreen';
+import {RecipeDetailScreen} from 'src/screens/home/RecipeDetailScreen';
+import {AIRecipeGenerateScreen} from '../screens/home/AIRecipeGenerateScreen';
 
 export type HomeStackParamList = {
     Home: undefined;
-    MealUpload: {mealId: MealId};
+    MealUpload: { mealId: MealId };
     Notification: undefined;
 
     RecipeBook: undefined;
@@ -22,6 +23,8 @@ export type HomeStackParamList = {
     RecipeDetail: {
         recipeId: string;
     };
+
+    AIRecipeGenerate: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -45,14 +48,19 @@ export function HomeStackNavigator() {
                 component={RecipeBookScreen}
             />
             <Stack.Screen
-    name="RecipeList"
-    component={RecipeListScreen}
-/>
+                name="RecipeList"
+                component={RecipeListScreen}
+            />
 
-<Stack.Screen
-    name="RecipeDetail"
-    component={RecipeDetailScreen}
-/>
+            <Stack.Screen
+                name="RecipeDetail"
+                component={RecipeDetailScreen}
+            />
+            <Stack.Screen
+                name="AIRecipeGenerate"
+                component={AIRecipeGenerateScreen}
+                options={{animation: 'slide_from_right'}}
+            />
         </Stack.Navigator>
     );
 }

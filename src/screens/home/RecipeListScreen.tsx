@@ -40,23 +40,23 @@ export function RecipeListScreen({navigation, route}: Props) {
         : aiRecipes;
 
     return (
-        <SafeAreaView style={s.container}>
-            <ScrollView style={s.scroll}>
-                <View style={s.header}> 
-                    <TouchableOpacity onPress={() => navigation.goBack()} > 
-                        <Text style={s.backBtn}>←</Text> 
+        <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
+            <ScrollView
+                style={s.scroll}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{paddingBottom: type === 'ai' ? 100 : 24}}>
+                <View style={s.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()}>
+                        <Text style={s.backBtn}>←</Text>
                     </TouchableOpacity>
                     <Text style={s.title}>
-                        {
-                            type === 'saved'
-                                ? '저장한 레시피'
-                                : type === 'history'
-                                ? '이전 식단'
-                                : 'AI 생성 레시피'
-                        }
+                        {type === 'saved'
+                            ? '저장한 레시피'
+                            : type === 'history'
+                            ? '이전 식단'
+                            : 'AI 생성 레시피'}
                     </Text>
                 </View>
-
 
                 {recipes.map(recipe => (
                     <TouchableOpacity
@@ -72,13 +72,47 @@ export function RecipeListScreen({navigation, route}: Props) {
                     </TouchableOpacity>
                 ))}
             </ScrollView>
+
+            {type === 'ai' && (
+                <View style={s.footer}>
+                    <TouchableOpacity
+                        style={s.generateBtn}
+                        onPress={() => navigation.navigate('AIRecipeGenerate')}>
+                        <Text style={s.generateBtnText}>
+                            ✦ AI 레시피 생성하기
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
 
 const s = StyleSheet.create({
     container: {flex: 1, backgroundColor: colors.bg},
-    scroll: {paddingHorizontal:16},
+    scroll: {paddingHorizontal: 16},
+    footer: {
+        height: 68,
+        paddingHorizontal: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        backgroundColor: colors.bg,
+    },
+    generateBtn: {
+        height: 52,
+        width: '100%',
+        borderRadius: 14,
+        backgroundColor: colors.accent,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    generateBtnText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#111',
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -140,7 +140,7 @@ export function HomeScreen({navigation}: Props) {
                     onPress={() => navigation.navigate('RecipeBook')}
                 >
                     <View style={s.recipeBookLeft}>
-                        <Text style={s.recipeBookIcon}>📸</Text>
+                        <Text style={s.recipeBookIcon}>📖</Text>
 
                         <View>
                             <Text style={s.recipeBookTitle}>
@@ -156,6 +156,14 @@ export function HomeScreen({navigation}: Props) {
                     <View style={s.recipeBookArrow}>
                         <Text style={{color: colors.text}}>›</Text>
                     </View>
+                </TouchableOpacity>
+
+                {/* AI 레시피 생성 버튼 */}
+                <TouchableOpacity
+                    style={s.aiGenerateBtn}
+                    onPress={() => navigation.navigate('AIRecipeGenerate')}
+                >
+                    <Text style={s.aiGenerateBtnText}>✦ AI 레시피 생성하기</Text>
                 </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
@@ -209,9 +217,22 @@ const s = StyleSheet.create({
         height: 34,
         borderRadius: 17,
         backgroundColor: colors.surface,
-
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    aiGenerateBtn: {
+        height: 52,
+        width: '100%',
+        borderRadius: 14,
+        backgroundColor: colors.accent,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    aiGenerateBtnText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#111',
     },
     container: {flex: 1, backgroundColor: colors.bg},
     scroll: {flex: 1, paddingHorizontal: 16},
