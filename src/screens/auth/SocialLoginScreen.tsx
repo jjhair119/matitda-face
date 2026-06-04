@@ -13,7 +13,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'SocialLogin'>;
 
-const SERVER_URL = 'http://localhost:3000';
+const SERVER_URL = 'https://matasitda-backend-production.up.railway.app';
 
 export function SocialLoginScreen({navigation}: Props) {
     const {setLoggedIn, setOnboarded, setDraftProfile} = useAuthStore();
@@ -25,7 +25,7 @@ export function SocialLoginScreen({navigation}: Props) {
         try {
             // 서버의 /auth/kakao/login → 카카오 OAuth → /auth/kakao/callback → /auth/success?token=...&isNewUser=...
             const loginUrl = `${SERVER_URL}/auth/kakao/login`;
-            const successUrl = `${SERVER_URL}/auth/success`;
+            const successUrl = 'matitda://auth/success';
 
             const result = await WebBrowser.openAuthSessionAsync(loginUrl, successUrl);
 

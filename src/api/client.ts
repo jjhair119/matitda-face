@@ -8,7 +8,7 @@ export const getToken = () => AsyncStorage.getItem(TOKEN_KEY);
 export const removeToken = () => AsyncStorage.removeItem(TOKEN_KEY);
 
 export const api = axios.create({
-    baseURL: 'http://localhost:3000',
+    baseURL: 'https://matasitda-backend-production.up.railway.app',
     timeout: 10000,
 });
 
