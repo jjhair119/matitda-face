@@ -3,53 +3,51 @@ import {View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert} from
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import {OnboardingStackParamList} from '../../navigation/OnboardingNavigator';
 import {useAuthStore} from '../../store/authStore';
-import {loginWithKakaoToken, loginWithDevToken} from '../../api/auth';
+import {loginWithDevToken} from '../../api/auth';
+import {saveToken} from '../../api/client';
 import {colors} from '../../theme';
 
 WebBrowser.maybeCompleteAuthSession();
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'SocialLogin'>;
 
-const KAKAO_REST_API_KEY = '22146a4d2670af1f7c5b2037a55ad808';
+const SERVER_URL = 'http://localhost:3000';
 
 export function SocialLoginScreen({navigation}: Props) {
-    const {setLoggedIn, setDraftProfile} = useAuthStore();
+    const {setLoggedIn, setOnboarded, setDraftProfile} = useAuthStore();
     const [loading, setLoading] = useState<'kakao' | 'dev' | null>(null);
-
-    const redirectUri = AuthSession.makeRedirectUri({scheme: 'matitda'});
 
     const handleKakaoLogin = async () => {
         if (loading) return;
         setLoading('kakao');
         try {
-            const authUrl =
-                `https://kauth.kakao.com/oauth/authorize` +
-                `?response_type=code&client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+            // 서버의 /auth/kakao/login → 카카오 OAuth → /auth/kakao/callback → /auth/success?token=...&isNewUser=...
+            const loginUrl = `${SERVER_URL}/auth/kakao/login`;
+            const successUrl = `${SERVER_URL}/auth/success`;
 
-            const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+            const result = await WebBrowser.openAuthSessionAsync(loginUrl, successUrl);
 
             if (result.type !== 'success') {
                 return;
             }
 
-            // 카카오에서 받은 code를 서버로 전달해 access_token 획득
+            // 서버가 리다이렉트한 URL: http://localhost:3000/auth/success?token=JWT&isNewUser=true
             const url = new URL(result.url);
-            const code = url.searchParams.get('code');
-            if (!code) throw new Error('code 없음');
+            const token = url.searchParams.get('token');
+            const isNewUser = url.searchParams.get('isNewUser') === 'true';
 
-            // 서버의 /auth/kakao/callback 대신 직접 토큰 교환이 필요하면 여기서 처리
-            // 현재 서버가 /auth/kakao (access_token 방식)을 사용하므로 중간 단계 필요
-            // 임시: 서버 콜백 URL로 code 전달
-            const tokenRes = await fetch(`http://localhost:3000/auth/kakao/callback?code=${code}`);
-            const tokenData = await tokenRes.json();
+            if (!token) throw new Error('토큰 없음');
 
-            await loginWithKakaoToken(tokenData.access_token ?? tokenData.token);
-            setDraftProfile({id: tokenData.user?.id});
+            await saveToken(token);
             setLoggedIn(true);
-            navigation.navigate('BasicInfo');
+
+            if (isNewUser) {
+                navigation.navigate('BasicInfo');
+            } else {
+                setOnboarded(true);
+            }
         } catch (e) {
             Alert.alert('카카오 로그인 실패', '잠시 후 다시 시도해주세요.');
         } finally {
@@ -66,7 +64,7 @@ export function SocialLoginScreen({navigation}: Props) {
             setLoggedIn(true);
             navigation.navigate('BasicInfo');
         } catch {
-            Alert.alert('개발 로그인 실패', '서버가 실행 중인지 확인해주세요.');
+            Alert.alert('개발 로그인 실패', '서버 연결을 확인해주세요.');
         } finally {
             setLoading(null);
         }
