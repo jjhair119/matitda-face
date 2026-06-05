@@ -451,7 +451,7 @@ export function FriendsScreen() {
                         items.map((f) => (
                             <View key={f.id} style={s.dietRow}>
                                 <DietCard friend={f} />
-                                <View style={s.cheerWrap}><CheerButton /></View>
+                                {/* <View style={s.cheerWrap}><CheerButton /></View> */}
                             </View>
                         ))
                     )}
