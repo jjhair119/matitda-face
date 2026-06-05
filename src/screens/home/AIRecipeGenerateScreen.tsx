@@ -26,7 +26,6 @@ const MEAL_OPTIONS = [
     {id: 'breakfast', label: '아침', emoji: '🌅'},
     {id: 'lunch', label: '점심', emoji: '☀️'},
     {id: 'dinner', label: '저녁', emoji: '🌙'},
-    {id: 'snack', label: '간식', emoji: '🍪'},
 ];
 
 const STYLE_OPTIONS = [
@@ -277,7 +276,7 @@ function RecipeCard({mealId, recipe, onSave, saved}: {mealId: string; recipe: No
                     <View style={rc.cardMeta}>
                         <Text style={rc.cardMetaText}>🔥 {recipe.kcal}kcal</Text>
                         <Text style={rc.cardMetaDot}>·</Text>
-                        <Text style={rc.cardMetaText}>⏱ {recipe.cookTime}</Text>
+                        {/*<Text style={rc.cardMetaText}>⏱ {recipe.cookTime}</Text>*/}
                         <Text style={rc.cardMetaDot}>·</Text>
                         <Text style={rc.cardMetaText}>{recipe.difficulty}</Text>
                     </View>

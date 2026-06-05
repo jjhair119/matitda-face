@@ -14,7 +14,7 @@ import {NativeStackScreenProps} from '@react-navigation/native-stack';
 
 import {HomeStackParamList} from '../../navigation/HomeStackNavigator';
 import {colors} from '../../theme';
-import {getSavedRecipes, deleteRecipe, SavedRecipe, RecipePlanDay, RecipeMeal} from '../../api/recipes';
+import {getSavedRecipes, deleteRecipe, activateRecipe, SavedRecipe, RecipePlanDay, RecipeMeal} from '../../api/recipes';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'RecipeBook'>;
 
@@ -22,7 +22,6 @@ const MEAL_LABEL: Record<string, string> = {
     breakfast: '아침',
     lunch: '점심',
     dinner: '저녁',
-    snack: '간식',
 };
 
 function formatDate(iso: string) {
@@ -87,12 +86,31 @@ function DayBlock({dayObj}: {dayObj: RecipePlanDay}) {
     );
 }
 
-function RecipeCard({recipe, onDelete}: {recipe: SavedRecipe; onDelete: () => void}) {
+function RecipeCard({recipe, onDelete, onActivate}: {recipe: SavedRecipe; onDelete: () => void; onActivate: () => void}) {
     const [open, setOpen] = useState(false);
+    const [activating, setActivating] = useState(false);
     const mealLabels = (recipe.meals ?? []).map(m => MEAL_LABEL[m] ?? m).join(' · ');
     const planDays: RecipePlanDay[] = Array.isArray(recipe.plan)
         ? recipe.plan
         : (recipe.plan as any).plan ?? [];
+
+    const handleActivate = async () => {
+        Alert.alert('플랜 실행', `${recipe.days}일 플랜을 실행할까요?\n현재 진행 중인 플랜이 있다면 교체됩니다.`, [
+            {text: '취소', style: 'cancel'},
+            {text: '실행', onPress: async () => {
+                setActivating(true);
+                try {
+                    await activateRecipe(recipe.id);
+                    onActivate();
+                    Alert.alert('플랜 시작!', `${recipe.days}일 플랜이 시작됐어요 🎉`);
+                } catch {
+                    Alert.alert('오류', '플랜 실행에 실패했어요.');
+                } finally {
+                    setActivating(false);
+                }
+            }},
+        ]);
+    };
 
     return (
         <View style={s.card}>
@@ -121,6 +139,12 @@ function RecipeCard({recipe, onDelete}: {recipe: SavedRecipe; onDelete: () => vo
                     {planDays.map((dayObj) => (
                         <DayBlock key={dayObj.day} dayObj={dayObj}/>
                     ))}
+                    <TouchableOpacity style={s.activateBtn} onPress={handleActivate} disabled={activating}>
+                        {activating
+                            ? <ActivityIndicator size="small" color="#111"/>
+                            : <Text style={s.activateBtnText}>▶ 이 플랜 실행하기</Text>
+                        }
+                    </TouchableOpacity>
                 </View>
             )}
         </View>
@@ -184,6 +208,7 @@ export function RecipeBookScreen({navigation}: Props) {
                             key={recipe.id}
                             recipe={recipe}
                             onDelete={() => handleDelete(recipe.id)}
+                            onActivate={() => navigation.navigate('Home')}
                         />
                     ))
                 )}
@@ -243,6 +268,9 @@ const s = StyleSheet.create({
     mealDesc: {fontSize: 12, color: colors.sub, marginBottom: 8, lineHeight: 18},
     detailSectionTitle: {fontSize: 11, fontWeight: '700', color: colors.text, marginTop: 8, marginBottom: 4},
     detailItem: {fontSize: 12, color: colors.text, lineHeight: 20},
+
+    activateBtn: {marginTop: 10, height: 42, borderRadius: 10, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center'},
+    activateBtnText: {fontSize: 13, fontWeight: '700', color: '#111'},
 
     footer: {height: 68, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg},
     generateBtn: {height: 52, width: '100%', borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center'},

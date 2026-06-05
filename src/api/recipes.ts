@@ -62,3 +62,28 @@ export async function getSavedRecipes(): Promise<SavedRecipe[]> {
 export async function deleteRecipe(id: string): Promise<void> {
     await api.delete(`/recipes/${id}`);
 }
+
+export interface TodayPlanMeal {
+    id: string;
+    title: string;
+    meal: string;
+    meal_label: string;
+    nutrition: {calories: number; carbs_g: number; protein_g: number; fat_g: number};
+}
+
+export interface TodayPlan {
+    active: boolean;
+    day: number;
+    total_days: number;
+    current_meal: string;
+    meals: TodayPlanMeal[];
+}
+
+export async function activateRecipe(id: string): Promise<void> {
+    await api.post(`/recipes/${id}/activate`);
+}
+
+export async function getTodayPlan(): Promise<TodayPlan> {
+    const {data} = await api.get('/recipes/today');
+    return data;
+}

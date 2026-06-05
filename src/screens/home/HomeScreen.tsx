@@ -1,4 +1,5 @@
 import React, {useEffect, useState, useCallback} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {
     View,
     Text,
@@ -10,6 +11,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import {getDailyMeals, DailyMealSummary} from '../../api/meals';
+import {getTodayPlan, TodayPlan} from '../../api/recipes';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useAuthStore} from '../../store/authStore';
@@ -44,15 +46,50 @@ const MEAL_TYPE_LABEL: Record<string, string> = {
     breakfast: '아침',
     lunch: '점심',
     dinner: '저녁',
-    snack: '간식',
 };
 
 const MEAL_TYPE_EMOJI: Record<string, string> = {
     breakfast: '🌅',
     lunch: '☀️',
     dinner: '🌙',
-    snack: '🍎',
 };
+
+const MEAL_LABEL_KO: Record<string, string> = {
+    breakfast: '아침',
+    lunch: '점심',
+    dinner: '저녁',
+};
+
+// ── TodayPlanBanner ──────────────────────────────────────────────────────────
+
+function TodayPlanBanner({plan}: {plan: TodayPlan}) {
+    const pct = (plan.day / plan.total_days) * 100;
+    return (
+        <View style={tp.banner}>
+            <View style={tp.bannerLeft}>
+                <Text style={tp.bannerBadge}>▶ 플랜 진행 중</Text>
+                <Text style={tp.bannerDay}>{plan.day}일차 / {plan.total_days}일</Text>
+            </View>
+            <View style={tp.bannerTrackWrap}>
+                <View style={tp.bannerTrack}>
+                    <View style={[tp.bannerFill, {width: `${pct}%` as any}]}/>
+                </View>
+                <Text style={tp.bannerPct}>{Math.round(pct)}%</Text>
+            </View>
+        </View>
+    );
+}
+
+const tp = StyleSheet.create({
+    banner: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(184,255,78,0.08)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(184,255,78,0.25)'},
+    bannerLeft: {gap: 2},
+    bannerBadge: {fontSize: 10, fontWeight: '700', color: colors.accent},
+    bannerDay: {fontSize: 11, color: colors.sub},
+    bannerTrackWrap: {flexDirection: 'row', alignItems: 'center', gap: 6},
+    bannerTrack: {width: 80, height: 3, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden'},
+    bannerFill: {height: '100%', backgroundColor: colors.accent, borderRadius: 2},
+    bannerPct: {fontSize: 10, color: colors.accent, fontWeight: '600', minWidth: 28, textAlign: 'right'},
+});
 
 // ── MacroBar ─────────────────────────────────────────────────────────────────
 
@@ -324,6 +361,7 @@ export function HomeScreen({navigation}: Props) {
     const [todaySummary, setTodaySummary] = useState<DailyMealSummary | null>(null);
     const [weekData, setWeekData] = useState<(DailyMealSummary | null)[]>(Array(7).fill(null));
     const [weekLoading, setWeekLoading] = useState(true);
+    const [todayPlan, setTodayPlan] = useState<TodayPlan | null>(null);
 
     // 모달 상태
     const [modalVisible, setModalVisible] = useState(false);
@@ -332,11 +370,20 @@ export function HomeScreen({navigation}: Props) {
     const [modalLoading, setModalLoading] = useState(false);
     const [modalMealType, setModalMealType] = useState<string | undefined>(undefined);
 
-    useEffect(() => {
+    const loadTodayData = useCallback(() => {
+        getTodayPlan().then(p => { if (p.active) setTodayPlan(p); else setTodayPlan(null); }).catch(() => {});
         getDailyMeals(today)
             .then((summary) => {
                 setTodaySummary(summary);
-                // API 기록을 mealStore에 동기화 (앱 재시작 후 칼로리·매크로 복원)
+                // 주간 데이터에서 오늘 날짜 업데이트
+                const todayIdx = weekDates.findIndex(d => toDateStr(d) === today);
+                if (todayIdx !== -1) {
+                    setWeekData(prev => {
+                        const next = [...prev];
+                        next[todayIdx] = summary;
+                        return next;
+                    });
+                }
                 const grouped: Record<string, typeof summary.records> = {};
                 for (const r of summary.records) {
                     (grouped[r.meal_type] ??= []).push(r);
@@ -358,6 +405,10 @@ export function HomeScreen({navigation}: Props) {
             })
             .catch(() => {});
     }, [today]);
+
+    useFocusEffect(useCallback(() => {
+        loadTodayData();
+    }, [loadTodayData]));
 
     useEffect(() => {
         (async () => {
@@ -490,9 +541,19 @@ export function HomeScreen({navigation}: Props) {
                     onDayPress={openDayModal}
                 />
 
+                {/* 진행 중인 플랜 배너 */}
+                {/*{todayPlan && <TodayPlanBanner plan={todayPlan}/>}*/}
+
                 {/* 오늘 식단 섹션 */}
-                <Text style={s.sectionTitle}>오늘 식단 · {dateLabel}</Text>
-                {meals.map((meal) => (
+                <Text style={s.sectionTitle}>
+                    오늘 식단 · {dateLabel} · {todayPlan ? `▶ 플랜 진행 중 - ${todayPlan.day}일차 / ${todayPlan.total_days}일` : ''}
+                </Text>
+
+                {meals.map((meal) => {
+                    const planMeal = todayPlan?.meals.find(m => m.meal === meal.id);
+                    const displayKcal = planMeal ? Math.round(planMeal.nutrition.calories) : null;
+                    const displayIngredients = planMeal ? planMeal.title : '-';
+                    return (
                     <TouchableOpacity
                         key={meal.id}
                         style={[s.mealCard, meal.actualKcal !== null && s.mealCardDone]}
@@ -503,8 +564,8 @@ export function HomeScreen({navigation}: Props) {
                             <Text style={s.mealEmoji}>{meal.emoji}</Text>
                         </View>
                         <View style={s.mealMid}>
-                            <Text style={s.mealMeta}>{meal.label} · {meal.expectedKcal}kcal</Text>
-                            <Text style={s.mealIngredients} numberOfLines={1}>{meal.ingredients}</Text>
+                            <Text style={s.mealMeta}>{meal.label}{displayKcal != null ? ` · ${displayKcal}kcal` : ''}</Text>
+                            <Text style={s.mealIngredients} numberOfLines={1}>{displayIngredients}</Text>
                         </View>
                         {meal.actualKcal !== null ? (
                             <View style={s.doneBox}>
@@ -528,7 +589,8 @@ export function HomeScreen({navigation}: Props) {
                             </TouchableOpacity>
                         )}
                     </TouchableOpacity>
-                ))}
+                    );
+                })}
 
                 {/* 레시피북 */}
                 <TouchableOpacity style={s.recipeBookCard} onPress={() => navigation.navigate('RecipeBook')}>
