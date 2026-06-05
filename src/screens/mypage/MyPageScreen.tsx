@@ -75,9 +75,17 @@ export function MyPageScreen({navigation}: Props) {
                     </View>
                     <View style={s.profileInfo}>
                         <Text style={s.profileName}>{user?.nickname ?? '-'}</Text>
-                        <Text style={s.profileSub}>
-                            {handle} · 팔로잉 24 · 팔로워 31
-                        </Text>
+                        <Text style={s.profileSub}>{handle}</Text>
+                        {user?.id && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Alert.alert('내 ID', user.id, [{text: '확인'}]);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={s.profileId}>ID: {user.id}</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                     <TouchableOpacity style={s.editBtn} onPress={() => navigation.navigate('ProfileEdit')}>
                         <Text style={s.editBtnText}>편집</Text>
@@ -267,6 +275,7 @@ const s = StyleSheet.create({
     profileInfo: {flex: 1},
     profileName: {fontSize: 16, fontWeight: '700', color: colors.text},
     profileSub: {fontSize: 11, color: colors.sub, marginTop: 2},
+    profileId: {fontSize: 10, color: colors.sub, marginTop: 3, opacity: 0.6},
     editBtn: {
         paddingHorizontal: 12,
         paddingVertical: 6,
