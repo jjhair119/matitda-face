@@ -2,7 +2,7 @@ import {api} from './client';
 
 export interface DailyMealSummary {
     date: string;
-    records: {id: string; meal_type: string; calories: number; carbs_g: number; protein_g: number; fat_g: number}[];
+    records: {id: string; meal_type: string; calories: number; carbs_g: number; protein_g: number; fat_g: number; score: number | null}[];
     totals: {calories: number; carbs_g: number; protein_g: number; fat_g: number};
 }
 

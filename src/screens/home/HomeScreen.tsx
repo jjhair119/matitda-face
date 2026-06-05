@@ -143,7 +143,12 @@ function DietDetailModal({
                                             탄 {Math.round(r.carbs_g)}g · 단 {Math.round(r.protein_g)}g · 지 {Math.round(r.fat_g)}g
                                         </Text>
                                     </View>
-                                    <Text style={md.recordCal}>{Math.round(r.calories)}<Text style={md.recordCalUnit}> kcal</Text></Text>
+                                    <View style={{alignItems: 'flex-end', gap: 2}}>
+                                        <Text style={md.recordCal}>{Math.round(r.calories)}<Text style={md.recordCalUnit}> kcal</Text></Text>
+                                        {r.score !== null && r.score !== undefined && (
+                                            <Text style={md.recordScore}>{r.score}<Text style={md.recordScoreUnit}>점</Text></Text>
+                                        )}
+                                    </View>
                                 </View>
                             ))}
 
@@ -197,6 +202,8 @@ const md = StyleSheet.create({
     recordMacro: {fontSize: 10, color: colors.sub},
     recordCal: {fontSize: 14, fontWeight: '700', color: colors.accent},
     recordCalUnit: {fontSize: 10, fontWeight: '400', color: colors.sub},
+    recordScore: {fontSize: 12, fontWeight: '700', color: colors.teal},
+    recordScoreUnit: {fontSize: 9, fontWeight: '400', color: colors.sub},
     totalsBox: {
         marginTop: 14,
         backgroundColor: colors.surface,
@@ -340,9 +347,12 @@ export function HomeScreen({navigation}: Props) {
                     const carb = records.reduce((s, r) => s + r.carbs_g, 0);
                     const protein = records.reduce((s, r) => s + r.protein_g, 0);
                     const fat = records.reduce((s, r) => s + r.fat_g, 0);
+                    const scores = records.map((r) => r.score).filter((s): s is number => s !== null);
+                    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
                     updateMeal(mealType as any, {
                         actualKcal: Math.round(cal),
                         macros: {carb: Math.round(carb), protein: Math.round(protein), fat: Math.round(fat)},
+                        score: avgScore,
                     });
                 }
             })
@@ -499,7 +509,7 @@ export function HomeScreen({navigation}: Props) {
                         {meal.actualKcal !== null ? (
                             <View style={s.doneBox}>
                                 {meal.score !== null
-                                    ? <Text style={s.scoreNum}>{meal.score}<Text style={s.scoreUnit} >점</Text></Text>
+                                    ? <Text style={s.scoreNum}>{meal.score}<Text style={s.scoreUnit}> 점</Text></Text>
                                     : <Text style={s.scoreNum}>{meal.actualKcal}<Text style={s.scoreUnit}> kcal</Text></Text>
                                 }
                                 <TouchableOpacity
