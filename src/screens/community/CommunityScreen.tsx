@@ -148,7 +148,7 @@ function FeedScreen({
                 </View>
                 <Text style={s.postTitle} numberOfLines={2}>{post.content}</Text>
                 <View style={s.tagRow}>
-                  {post.tags.map(tag => (
+                  {(post.tags ?? []).map(tag => (
                     <TouchableOpacity key={tag} onPress={() => onHashtagPress(tag)} hitSlop={4}>
                       <Text style={s.hashTag}>#{tag}</Text>
                     </TouchableOpacity>
@@ -249,7 +249,7 @@ function HashtagSearchScreen({
               </View>
               <View style={s.flex1}>
                 <Text style={s.resultTitle} numberOfLines={2}>{post.content}</Text>
-                <Text style={s.resultTags}>{post.tags.map(t => `#${t}`).join(' ')}</Text>
+                <Text style={s.resultTags}>{(post.tags ?? []).map(t => `#${t}`).join(' ')}</Text>
                 <Text style={s.resultKcal}>{post.nickname} · {timeAgo(post.created_at)}</Text>
               </View>
             </TouchableOpacity>
@@ -437,11 +437,11 @@ function PostDetailScreen({
             </TouchableOpacity>
           </View>
 
-          {post.tags.length > 0 && (
+          {(post.tags?.length ?? 0) > 0 && (
             <>
               <Text style={s.sectionLabel}>태그</Text>
               <View style={s.tagRow}>
-                {post.tags.map(tag => (
+                {(post.tags ?? []).map(tag => (
                   <View key={tag} style={s.ingredientTagBlue}>
                     <Text style={s.ingredientTagBlueText}>#{tag}</Text>
                   </View>
