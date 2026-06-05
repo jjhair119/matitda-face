@@ -1,5 +1,16 @@
 import {api} from './client';
 
+export interface UserSearchResult {
+    id: string;
+    nickname: string;
+    user_code: string;
+}
+
+export async function searchUserByCode(code: string): Promise<UserSearchResult> {
+    const {data} = await api.get('/users/search', {params: {code}});
+    return data.user;
+}
+
 export interface UserSummary {
     id: string;
     nickname: string;

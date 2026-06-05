@@ -29,6 +29,7 @@ export function RootNavigator() {
                     if (onboardingDone) {
                         setUser({
                             id: userInfo.id,
+                            user_code: userInfo.user_code,
                             nickname: userInfo.nickname,
                             email: userInfo.email,
                             age: userInfo.age,

@@ -56,10 +56,6 @@ export function MyPageScreen({navigation}: Props) {
         {label: '몸무게', value: user ? `${user.weight}kg` : '-'},
     ];
 
-    const handle = user?.nickname
-        ? `@${user.nickname.toLowerCase().replace(/\s+/g, '')}`
-        : '@-';
-
     const availableCoupons = coupons.filter((c) => !c.used).length;
 
     return (
@@ -76,16 +72,15 @@ export function MyPageScreen({navigation}: Props) {
                     </View>
                     <View style={s.profileInfo}>
                         <Text style={s.profileName}>{user?.nickname ?? '-'}</Text>
-                        <Text style={s.profileSub}>{handle}</Text>
-                        {user?.id && (
+                        {user?.user_code && (
                             <TouchableOpacity
                                 onPress={async () => {
-                                    await ExpoClipboard.setStringAsync(user.id);
-                                    Alert.alert('복사됨', 'ID가 클립보드에 복사됐어요.');
+                                    await ExpoClipboard.setStringAsync(user.user_code!);
+                                    Alert.alert('복사됨', '유저코드가 클립보드에 복사됐어요.');
                                 }}
                                 activeOpacity={0.7}
                             >
-                                <Text style={s.profileId}>ID: {user.id}</Text>
+                                <Text style={s.profileId}>유저코드: {user.user_code}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -111,16 +106,16 @@ export function MyPageScreen({navigation}: Props) {
 
                     <View style={s.divider}/>
 
-                    <View style={s.infoRow}>
-                        <Text style={s.infoRowLabel}>식단 목표</Text>
-                        {user?.dietGoal ? (
-                            <View style={s.chip}>
-                                <Text style={s.chipText}>{GOAL_LABELS[user.dietGoal]}</Text>
-                            </View>
-                        ) : (
-                            <Text style={s.infoRowValue}>-</Text>
-                        )}
-                    </View>
+                    {/*<View style={s.infoRow}>*/}
+                    {/*    <Text style={s.infoRowLabel}>식단 목표</Text>*/}
+                    {/*    {user?.dietGoal ? (*/}
+                    {/*        <View style={s.chip}>*/}
+                    {/*            <Text style={s.chipText}>{GOAL_LABELS[user.dietGoal]}</Text>*/}
+                    {/*        </View>*/}
+                    {/*    ) : (*/}
+                    {/*        <Text style={s.infoRowValue}>-</Text>*/}
+                    {/*    )}*/}
+                    {/*</View>*/}
 
                     <View style={s.infoRow}>
                         <Text style={s.infoRowLabel}>TDEE</Text>
@@ -276,8 +271,7 @@ const s = StyleSheet.create({
     avatarEmoji: {fontSize: 24},
     profileInfo: {flex: 1},
     profileName: {fontSize: 16, fontWeight: '700', color: colors.text},
-    profileSub: {fontSize: 11, color: colors.sub, marginTop: 2},
-    profileId: {fontSize: 10, color: colors.sub, marginTop: 3, opacity: 0.6},
+    profileId: {fontSize: 11, color: colors.sub, marginTop: 3, opacity: 0.6},
     editBtn: {
         paddingHorizontal: 12,
         paddingVertical: 6,
@@ -312,7 +306,7 @@ const s = StyleSheet.create({
     infoCellValue: {fontSize: 14, fontWeight: '600', color: colors.text},
 
     divider: {height: 1, backgroundColor: colors.border, marginVertical: 10},
-    infoRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6},
+    infoRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',},
     infoRowLabel: {fontSize: 11, color: colors.sub},
     infoRowValue: {fontSize: 12, color: colors.sub},
 

@@ -24,6 +24,8 @@ import {
     fetchFollowers,
     fetchFriendsDiet,
     toggleFollow,
+    searchUserByCode,
+    UserSearchResult,
 } from '../../api/friends';
 import {useAuthStore} from '../../store/authStore';
 
@@ -96,26 +98,46 @@ function AddFriendModal({
     onClose: () => void;
     onFollowed: () => void;
 }) {
-    const [userId, setUserId] = useState('');
+    const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
+    const [found, setFound] = useState<UserSearchResult | null>(null);
     const [result, setResult] = useState<'success' | 'error' | null>(null);
     const [errorMsg, setErrorMsg] = useState('');
 
     const handleClose = () => {
-        setUserId('');
+        setCode('');
+        setFound(null);
         setResult(null);
         setErrorMsg('');
         onClose();
     };
 
-    const handleSubmit = async () => {
-        const trimmed = userId.trim();
+    const handleSearch = async () => {
+        const trimmed = code.trim().toUpperCase();
         if (!trimmed) return;
+        setLoading(true);
+        setFound(null);
+        setResult(null);
+        setErrorMsg('');
+        try {
+            const user = await searchUserByCode(trimmed);
+            setFound(user);
+        } catch (e: any) {
+            setResult('error');
+            const status = e?.response?.status;
+            setErrorMsg(status === 404 ? '존재하지 않는 유저코드예요.' : '오류가 발생했어요. 다시 시도해주세요.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleFollow = async () => {
+        if (!found) return;
         setLoading(true);
         setResult(null);
         setErrorMsg('');
         try {
-            const res = await toggleFollow(trimmed);
+            const res = await toggleFollow(found.id);
             if (res.following) {
                 setResult('success');
                 onFollowed();
@@ -126,9 +148,7 @@ function AddFriendModal({
         } catch (e: any) {
             setResult('error');
             const status = e?.response?.status;
-            if (status === 404) {
-                setErrorMsg('존재하지 않는 사용자예요.');
-            } else if (status === 400) {
+            if (status === 400) {
                 setErrorMsg('자기 자신은 팔로우할 수 없어요.');
             } else {
                 setErrorMsg('오류가 발생했어요. 다시 시도해주세요.');
@@ -144,33 +164,42 @@ function AddFriendModal({
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                     <Pressable style={s.addModalBox} onPress={() => {}}>
                         <View style={s.addModalHandle} />
-                        <Text style={s.addModalTitle}>ID로 친구 추가</Text>
-                        <Text style={s.addModalDesc}>상대방의 사용자 ID를 입력하세요</Text>
+                        <Text style={s.addModalTitle}>유저코드로 친구 추가</Text>
+                        <Text style={s.addModalDesc}>상대방의 유저코드를 입력하세요 (예: ABCD1234)</Text>
 
                         <View style={s.addModalInputRow}>
                             <TextInput
                                 style={s.addModalInput}
-                                value={userId}
+                                value={code}
                                 onChangeText={(t) => {
-                                    setUserId(t);
+                                    setCode(t.toUpperCase());
+                                    setFound(null);
                                     setResult(null);
                                     setErrorMsg('');
                                 }}
-                                placeholder="사용자 ID 입력"
+                                placeholder="유저코드 입력"
                                 placeholderTextColor={colors.sub}
-                                autoCapitalize="none"
+                                autoCapitalize="characters"
                                 autoCorrect={false}
-                                returnKeyType="done"
-                                onSubmitEditing={handleSubmit}
+                                returnKeyType="search"
+                                onSubmitEditing={handleSearch}
                                 editable={!loading}
                             />
-                            {userId.length > 0 && !loading && (
-                                <TouchableOpacity onPress={() => {setUserId(''); setResult(null);}} style={s.inputClear}>
+                            {code.length > 0 && !loading && (
+                                <TouchableOpacity onPress={() => {setCode(''); setFound(null); setResult(null);}} style={s.inputClear}>
                                     <Text style={{fontSize: 13, color: colors.sub}}>✕</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
 
+                        {found && result !== 'success' && (
+                            <View style={s.foundUserRow}>
+                                <View style={s.foundUserInfo}>
+                                    <Text style={s.foundUserName}>{found.nickname}</Text>
+                                    <Text style={s.foundUserCode}>{found.user_code}</Text>
+                                </View>
+                            </View>
+                        )}
                         {result === 'success' && (
                             <Text style={s.addResultSuccess}>✓ 팔로우했어요!</Text>
                         )}
@@ -178,17 +207,31 @@ function AddFriendModal({
                             <Text style={s.addResultError}>{errorMsg}</Text>
                         )}
 
-                        <TouchableOpacity
-                            style={[s.addModalBtn, (!userId.trim() || loading) && s.addModalBtnDisabled]}
-                            onPress={handleSubmit}
-                            disabled={!userId.trim() || loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator size="small" color={colors.bg} />
-                            ) : (
-                                <Text style={s.addModalBtnText}>팔로우</Text>
-                            )}
-                        </TouchableOpacity>
+                        {!found || result === 'success' ? (
+                            <TouchableOpacity
+                                style={[s.addModalBtn, (!code.trim() || loading) && s.addModalBtnDisabled]}
+                                onPress={handleSearch}
+                                disabled={!code.trim() || loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator size="small" color={colors.bg} />
+                                ) : (
+                                    <Text style={s.addModalBtnText}>검색</Text>
+                                )}
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                style={[s.addModalBtn, loading && s.addModalBtnDisabled]}
+                                onPress={handleFollow}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator size="small" color={colors.bg} />
+                                ) : (
+                                    <Text style={s.addModalBtnText}>팔로우</Text>
+                                )}
+                            </TouchableOpacity>
+                        )}
                     </Pressable>
                 </KeyboardAvoidingView>
             </Pressable>
@@ -720,6 +763,15 @@ const s = StyleSheet.create({
     inputClear: {padding: 4},
     addResultSuccess: {fontSize: 12, color: colors.accent, marginBottom: 12},
     addResultError: {fontSize: 12, color: '#ff6b6b', marginBottom: 12},
+    foundUserRow: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: colors.surface, borderRadius: 10,
+        padding: 12, marginBottom: 12,
+        borderWidth: 1, borderColor: colors.border,
+    },
+    foundUserInfo: {flex: 1},
+    foundUserName: {fontSize: 14, fontWeight: '600', color: colors.text},
+    foundUserCode: {fontSize: 11, color: colors.sub, marginTop: 2},
     addModalBtn: {
         width: '100%',
         height: 44,

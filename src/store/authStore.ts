@@ -3,6 +3,7 @@ import {removeToken} from '../api/client';
 
 export interface UserProfile {
     id: string;
+    user_code?: string;
     nickname: string;
     email?: string;
     age: number;
