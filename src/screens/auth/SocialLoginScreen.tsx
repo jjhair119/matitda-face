@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
@@ -107,23 +107,23 @@ export function SocialLoginScreen({navigation}: Props) {
                         <ActivityIndicator color="#000000"/>
                     ) : (
                         <View style={s.kakaoBtnInner}>
-                            <Text style={s.kakaoSymbol}>⬤</Text>
+                            <Image source={require('../../../assets/kakaologo2.png')} style={s.kakaoLogo}/>
                             <Text style={s.kakaoBtnText}>카카오로 시작하기</Text>
                         </View>
                     )}
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[s.devBtn, loading === 'dev' && s.btnLoading]}
-                    onPress={handleDevLogin}
-                    disabled={!!loading}
-                >
-                    {loading === 'dev' ? (
-                        <ActivityIndicator color={colors.accent}/>
-                    ) : (
-                        <Text style={s.devBtnText}>🛠 개발자 로그인 (테스트)</Text>
-                    )}
-                </TouchableOpacity>
+                {/*<TouchableOpacity*/}
+                {/*    style={[s.devBtn, loading === 'dev' && s.btnLoading]}*/}
+                {/*    onPress={handleDevLogin}*/}
+                {/*    disabled={!!loading}*/}
+                {/*>*/}
+                {/*    {loading === 'dev' ? (*/}
+                {/*        <ActivityIndicator color={colors.accent}/>*/}
+                {/*    ) : (*/}
+                {/*        <Text style={s.devBtnText}>🛠 개발자 로그인 (테스트)</Text>*/}
+                {/*    )}*/}
+                {/*</TouchableOpacity>*/}
             </View>
             <Text style={s.terms}>
                 소셜 계정으로 가입하면 이용약관 및{'\n'}개인정보처리방침에 동의한 것으로 간주합니다
@@ -140,7 +140,7 @@ const s = StyleSheet.create({
     buttons: {gap: 10, marginBottom: 24},
     kakaoBtn: {backgroundColor: '#FEE500', borderRadius: 12, padding: 14, alignItems: 'center'},
     kakaoBtnInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
-    kakaoSymbol: {fontSize: 16, color: '#000000'},
+    kakaoLogo: {width: 16, height: 16, resizeMode: 'contain'},
     kakaoBtnText: {fontSize: 14, fontWeight: '700', color: 'rgba(0,0,0,0.85)'},
     devBtn: {backgroundColor: colors.surface, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.accent},
     devBtnText: {fontSize: 14, fontWeight: '700', color: colors.accent},
