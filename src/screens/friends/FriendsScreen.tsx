@@ -164,7 +164,7 @@ function AddFriendModal({
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                     <Pressable style={s.addModalBox} onPress={() => {}}>
                         <View style={s.addModalHandle} />
-                        <Text style={s.addModalTitle}>유저코드로 친구 추가</Text>
+                        <Text style={s.addModalTitle}>유저코드로 팔로우 하기</Text>
                         <Text style={s.addModalDesc}>상대방의 유저코드를 입력하세요 (예: ABCD1234)</Text>
 
                         <View style={s.addModalInputRow}>
@@ -536,10 +536,10 @@ export function FriendsScreen() {
                 <Text style={s.title}>친구</Text>
                 <View style={s.headerRight}>
                     <TouchableOpacity onPress={() => setAddModalOpen(true)} style={s.headerBtn}>
-                        <Text style={s.headerBtnText}>+ 친구 추가</Text>
+                        <Text style={s.headerBtnText}>+ 팔로잉</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={toggleSearch} style={{paddingLeft: 8}}>
-                        <Text style={{fontSize: 18}}>{searchOpen ? '✕' : '🔍'}</Text>
+                        <Text style={{fontSize: 18, color: '#ffffff', width: 24, textAlign: 'center'}}>{searchOpen ? '✕' : '🔍'}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -550,7 +550,7 @@ export function FriendsScreen() {
                         style={s.searchInput}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
-                        placeholder="친구 닉네임 검색"
+                        placeholder="유저 닉네임 검색"
                         placeholderTextColor={colors.sub}
                         autoFocus
                         returnKeyType="search"
