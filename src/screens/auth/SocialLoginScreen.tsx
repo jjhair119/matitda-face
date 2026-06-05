@@ -17,7 +17,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'SocialLogin'>;
 const SERVER_URL = 'https://matasitda-backend-production.up.railway.app';
 
 export function SocialLoginScreen({navigation}: Props) {
-    const {setLoggedIn, setOnboarded, setDraftProfile} = useAuthStore();
+    const {setLoggedIn, setOnboarded, setDraftProfile, setUser} = useAuthStore();
     const [loading, setLoading] = useState<'kakao' | 'dev' | null>(null);
 
     const handleKakaoLogin = async () => {
@@ -48,6 +48,22 @@ export function SocialLoginScreen({navigation}: Props) {
             const onboardingDone = userInfo.nickname && userInfo.age && userInfo.height_cm && userInfo.weight_kg;
 
             if (onboardingDone) {
+                setUser({
+                    id: userInfo.id ?? '',
+                    nickname: userInfo.nickname ?? '',
+                    email: userInfo.email,
+                    age: userInfo.age ?? 0,
+                    gender: userInfo.gender ?? 'M',
+                    height: userInfo.height_cm ?? 0,
+                    weight: userInfo.weight_kg ?? 0,
+                    activityLevel: userInfo.activity_level === 'medium' ? 'normal' : (userInfo.activity_level ?? 'normal'),
+                    allergies: userInfo.allergies ?? [],
+                    diseases: userInfo.diseases ?? [],
+                    dietStyle: userInfo.diet_style === '채식' ? 'vegetarian' : userInfo.diet_style === '키토' ? 'keto' : 'normal',
+                    preferredIngredients: userInfo.preferred_ingredients ?? [],
+                    dietGoal: userInfo.diet_goal === 'lose_weight' ? 'lose' : userInfo.diet_goal === 'gain_weight' ? 'gain' : 'maintain',
+                    tdee: userInfo.tdee_kcal ?? userInfo.tdee ?? 1820,
+                });
                 setOnboarded(true);
             } else {
                 navigation.navigate('BasicInfo');
