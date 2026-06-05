@@ -17,7 +17,7 @@ export type HomeStackParamList = {
     RecipeBook: undefined;
 
     RecipeList: {
-        type: 'saved' | 'history' | 'ai';
+        type: 'saved' | 'ai';
     };
 
     RecipeDetail: {
