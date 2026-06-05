@@ -1,5 +1,6 @@
 import React from 'react';
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert} from 'react-native';
+import * as ExpoClipboard from 'expo-clipboard';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useAuthStore} from '../../store/authStore';
@@ -78,8 +79,9 @@ export function MyPageScreen({navigation}: Props) {
                         <Text style={s.profileSub}>{handle}</Text>
                         {user?.id && (
                             <TouchableOpacity
-                                onPress={() => {
-                                    Alert.alert('내 ID', user.id, [{text: '확인'}]);
+                                onPress={async () => {
+                                    await ExpoClipboard.setStringAsync(user.id);
+                                    Alert.alert('복사됨', 'ID가 클립보드에 복사됐어요.');
                                 }}
                                 activeOpacity={0.7}
                             >
