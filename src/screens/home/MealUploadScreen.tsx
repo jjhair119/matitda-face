@@ -254,7 +254,7 @@ export function MealUploadScreen({navigation, route}: Props) {
     /* ── ANALYZING ── */
     if (phase === 'analyzing') {
         return (
-            <SafeAreaView style={[s.container, {justifyContent: 'center', alignItems: 'center'}]}>
+            <SafeAreaView style={[s.container, {justifyContent: 'center', alignItems: 'center'}]} edges={['top', 'left', 'right']}>
                 {foodPhotoUri && (
                     <Image source={{uri: foodPhotoUri}} style={s.analyzingPhoto} blurRadius={3}/>
                 )}

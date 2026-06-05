@@ -498,7 +498,7 @@ export function CommunityScreen() {
   };
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
       {screen === 'feed' && (
         <FeedScreen
           onHashtagPress={handleHashtagPress}
